@@ -73,4 +73,4 @@ export interface MarriageMatchResult {
   doshas?: any;
 }
 
-export type ChartStyle = 'south-indian' | 'east-indian';
+export type ChartStyle = 'south-indian' | 'north-indian' | 'east-indian';

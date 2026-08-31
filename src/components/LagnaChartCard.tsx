@@ -1,5 +1,4 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
 import { getPlanetAbbr, formatPlanetDisplay, getPlanetColor } from '../lib/planetAbbreviations';
 
 export const SIGN_MAP: Record<string, { number: number; sanskrit: string }> = {
@@ -46,6 +45,21 @@ const SOUTH_INDIAN_LAYOUTS: Record<number, { col: number; row: number; name: str
   12: { col: 0, row: 0, name: "Pisces", sanskrit: "Meena", rashiLabel: { x: 10, y: 22 }, center: { x: 50, y: 60 } }
 };
 
+const NORTH_INDIAN_LAYOUTS: Record<number, { points: string; rashi: { x: number; y: number }; label: { x: number; y: number }; center: { x: number; y: number } }> = {
+  1: { points: "200,0 100,100 200,200 300,100", rashi: { x: 200, y: 55 }, label: { x: 200, y: 22 }, center: { x: 200, y: 110 } },
+  2: { points: "0,0 200,0 100,100", rashi: { x: 135, y: 40 }, label: { x: 65, y: 22 }, center: { x: 100, y: 55 } },
+  3: { points: "0,0 0,200 100,100", rashi: { x: 40, y: 135 }, label: { x: 22, y: 65 }, center: { x: 55, y: 100 } },
+  4: { points: "0,200 100,100 200,200 100,300", rashi: { x: 55, y: 200 }, label: { x: 22, y: 200 }, center: { x: 110, y: 200 } },
+  5: { points: "0,400 0,200 100,300", rashi: { x: 40, y: 265 }, label: { x: 22, y: 335 }, center: { x: 55, y: 300 } },
+  6: { points: "0,400 200,400 100,300", rashi: { x: 135, y: 360 }, label: { x: 65, y: 378 }, center: { x: 100, y: 345 } },
+  7: { points: "200,400 100,300 200,200 300,300", rashi: { x: 200, y: 345 }, label: { x: 200, y: 378 }, center: { x: 200, y: 290 } },
+  8: { points: "200,400 400,400 300,300", rashi: { x: 265, y: 360 }, label: { x: 335, y: 378 }, center: { x: 300, y: 345 } },
+  9: { points: "400,200 400,400 300,300", rashi: { x: 360, y: 265 }, label: { x: 378, y: 335 }, center: { x: 345, y: 300 } },
+  10: { points: "400,200 300,300 200,200 300,100", rashi: { x: 345, y: 200 }, label: { x: 378, y: 200 }, center: { x: 290, y: 200 } },
+  11: { points: "400,0 400,200 300,100", rashi: { x: 360, y: 135 }, label: { x: 378, y: 65 }, center: { x: 345, y: 100 } },
+  12: { points: "400,0 200,0 300,100", rashi: { x: 265, y: 40 }, label: { x: 335, y: 22 }, center: { x: 300, y: 55 } }
+};
+
 const EAST_INDIAN_LAYOUTS: Record<number, { type: 'triangle' | 'rect'; points?: string; x?: number; y?: number; width?: number; height?: number; name: string; sanskrit: string; label: { x: number; y: number }; center: { x: number; y: number }; }> = {
   1: { type: 'rect', x: 133.33, y: 0, width: 133.34, height: 133.33, name: "Aries", sanskrit: "Mesha", label: { x: 200, y: 22 }, center: { x: 200, y: 70 } },
   2: { type: 'triangle', points: "0,0 133.33,0 133.33,133.33", name: "Taurus", sanskrit: "Vrishabha", label: { x: 88, y: 22 }, center: { x: 88, y: 65 } },
@@ -83,34 +97,26 @@ const getPlanetOffsets = (count: number) => {
   ];
 };
 
-interface LagnaChartCardProps {
+export interface LagnaChartCardProps {
   horoscope?: any;
   cardTitle: string;
-  borderColor?: 'blue' | 'purple' | 'amber' | 'emerald' | 'orange' | string;
-  chartStyle: 'south-indian' | 'east-indian';
-  onChartStyleChange: (style: 'south-indian' | 'east-indian') => void;
+  borderColor?: string;
+  chartStyle: 'south-indian' | 'east-indian' | 'north-indian';
+  onChartStyleChange: (style: 'south-indian' | 'east-indian' | 'north-indian') => void;
   chartKey?: string;
   chartDataOverride?: any;
   centerBadgeText?: string;
 }
 
-const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
+export const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
   horoscope,
   cardTitle,
-  borderColor = 'blue',
   chartStyle,
   onChartStyleChange,
   chartKey = 'D-1_rasi',
   chartDataOverride,
   centerBadgeText,
 }) => {
-  const borderClasses = 
-    borderColor === 'purple' ? 'border-purple-500/50' : 
-    borderColor === 'amber' ? 'border-amber-500/50' : 
-    borderColor === 'emerald' ? 'border-emerald-500/50' : 
-    borderColor === 'orange' ? 'border-orange-500/50' : 
-    'border-blue-500/50';
-
   const chartData = chartDataOverride || 
     (chartKey === 'D-9_navamsa'
       ? (horoscope?.divisional_charts?.['D-9_navamsa'] || horoscope?.divisional_charts?.['D9'] || horoscope?.navamsa || horoscope?.d9)
@@ -167,18 +173,18 @@ const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
             height="18"
             rx="4"
             ry="4"
-            fill={isLagna ? "#F5A623" : "#131A2B"}
-            stroke={isRetro ? "#FF4444" : isLagna ? "#FFD700" : planetColor}
-            strokeWidth={isLagna || isRetro ? "2" : "1.5"}
+            fill={isLagna ? "#E67E22" : isRetro ? "#FEF2F2" : "#FDFBF7"}
+            stroke={isLagna ? "#B85D06" : isRetro ? "#EF4444" : "rgba(230, 126, 34, 0.3)"}
+            strokeWidth={isLagna || isRetro ? "1.5" : "1"}
           />
           <text
             x={chipWidth / 2}
             y="13"
             textAnchor="middle"
-            fill={isLagna ? "#0A0E17" : isRetro ? "#FF8F8F" : planetColor}
+            fill={isLagna ? "#FFFFFF" : isRetro ? "#DC2626" : planetColor}
             fontSize="10"
             fontWeight="bold"
-            fontFamily="monospace"
+            fontFamily="sans-serif"
           >
             {displayText}
           </text>
@@ -190,10 +196,10 @@ const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
   const displayBadge = centerBadgeText || (chartKey === 'D-9_navamsa' ? 'D-9' : 'D-1');
 
   const renderSouthIndianChart = () => (
-    <svg viewBox="0 0 400 400" className="w-full h-auto mx-auto border border-[#1E2433] rounded-lg bg-[#0F1322]">
-      <rect x="100" y="100" width="200" height="200" fill="#10141F" stroke="#1E2433" strokeWidth="1.5" />
-      <text x="200" y="190" textAnchor="middle" fill="#F5A623" fontSize="16" fontWeight="bold" fontFamily="serif">{displayBadge}</text>
-      <text x="200" y="215" textAnchor="middle" fill="#8FA8FF" fontSize="12" fontFamily='"Noto Sans Telugu", sans-serif'>Lagna: {ascSignName}</text>
+    <svg viewBox="0 0 400 400" className="w-full h-auto max-w-[340px] aspect-square mx-auto bg-white select-none shadow-[inset_0px_0px_1px_rgba(230,126,34,0.1)] rounded-xl overflow-hidden border border-[#E67E22]/30">
+      <rect x="100" y="100" width="200" height="200" fill="#FDFBF7" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.5" />
+      <text x="200" y="190" textAnchor="middle" fill="#E67E22" fontSize="16" fontWeight="700" letterSpacing="0.15em" fontFamily="serif">{displayBadge}</text>
+      <text x="200" y="215" textAnchor="middle" fill="#8A7B6E" fontSize="11" fontWeight="600" fontFamily="sans-serif">Lagna: {ascSignName}</text>
       
       {Object.entries(SOUTH_INDIAN_LAYOUTS).map(([signStr, layout]) => {
         const signIndex = parseInt(signStr);
@@ -204,9 +210,9 @@ const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
 
         return (
           <g key={signIndex} className="group">
-            <rect x={x} y={y} width="100" height="100" fill={isLagnaSign ? "rgba(245, 166, 35, 0.12)" : "#10141F"} stroke={isLagnaSign ? "#F5A623" : "#1E2433"} strokeWidth={isLagnaSign ? "2" : "1.5"} className="hover:fill-[#141A2B] transition-colors" />
-            {isLagnaSign && <line x1={x} y1={y} x2={x + 35} y2={y + 35} stroke="#F5A623" strokeWidth="1.5" />}
-            <text x={layout.rashiLabel.x} y={layout.rashiLabel.y} fill={isLagnaSign ? "#F5A623" : "#D1D5DB"} fontSize="10" fontWeight="bold" fontFamily='"Noto Sans Telugu", sans-serif'>{layout.sanskrit.substring(0, 3)} ({signIndex})</text>
+            <rect x={x} y={y} width="100" height="100" fill={isLagnaSign ? "#FFF8EE" : "#FFFFFF"} stroke={isLagnaSign ? "#E67E22" : "rgba(230, 126, 34, 0.25)"} strokeWidth={isLagnaSign ? "1.5" : "1"} className="hover:fill-[#F7F1E8] transition-colors" />
+            {isLagnaSign && <line x1={x} y1={y} x2={x + 30} y2={y + 30} stroke="#E67E22" strokeWidth="1.5" />}
+            <text x={layout.rashiLabel.x} y={layout.rashiLabel.y} fill={isLagnaSign ? "#E67E22" : "#8A7B6E"} fontSize="10" fontWeight="700" fontFamily="sans-serif">{layout.sanskrit.substring(0, 3)} ({signIndex})</text>
             {renderPlanetChips(planets, layout.center.x, layout.center.y)}
           </g>
         );
@@ -214,8 +220,34 @@ const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
     </svg>
   );
 
+  const renderNorthIndianChart = () => (
+    <svg viewBox="0 0 400 400" className="w-full h-auto max-w-[340px] aspect-square mx-auto bg-white select-none shadow-[inset_0px_0px_1px_rgba(230,126,34,0.1)] rounded-xl overflow-hidden border border-[#E67E22]/30">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((houseNum) => {
+        const rashiNum = ((ascSignIndex - 1 + (houseNum - 1)) % 12) + 1;
+        const planets = planetsInSigns[rashiNum] || [];
+        const layout = NORTH_INDIAN_LAYOUTS[houseNum];
+        if (!layout) return null;
+
+        return (
+          <g key={houseNum} className="group">
+            <polygon points={layout.points} fill={houseNum === 1 ? "#FFF8EE" : "#FFFFFF"} stroke="rgba(230, 126, 34, 0.35)" strokeWidth="1.2" className="hover:fill-[#F7F1E8] transition-colors" />
+            <text x={layout.label.x} y={layout.label.y} textAnchor="middle" fill="#8A7B6E" fontSize="9" fontWeight="600" fontFamily="sans-serif">H{houseNum}</text>
+            <text x={layout.rashi.x} y={layout.rashi.y} textAnchor="middle" fill="#E67E22" fontSize="11" fontWeight="bold" fontFamily="sans-serif">{rashiNum}</text>
+            {renderPlanetChips(planets, layout.center.x, layout.center.y)}
+          </g>
+        );
+      })}
+      <line x1="0" y1="0" x2="400" y2="400" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.2" pointerEvents="none" />
+      <line x1="400" y1="0" x2="0" y2="400" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.2" pointerEvents="none" />
+      <line x1="200" y1="0" x2="0" y2="200" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.2" pointerEvents="none" />
+      <line x1="0" y1="200" x2="200" y2="400" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.2" pointerEvents="none" />
+      <line x1="200" y1="400" x2="400" y2="200" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.2" pointerEvents="none" />
+      <line x1="400" y1="200" x2="200" y2="0" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.2" pointerEvents="none" />
+    </svg>
+  );
+
   const renderEastIndianChart = () => (
-    <svg viewBox="0 0 400 400" className="w-full h-auto mx-auto border border-[#1E2433] rounded-lg bg-[#0F1322]">
+    <svg viewBox="0 0 400 400" className="w-full h-auto max-w-[340px] aspect-square mx-auto bg-white select-none shadow-[inset_0px_0px_1px_rgba(230,126,34,0.1)] rounded-xl overflow-hidden border border-[#E67E22]/30">
       {Object.entries(EAST_INDIAN_LAYOUTS).map(([signStr, layout]) => {
         const signIndex = parseInt(signStr);
         const planets = planetsInSigns[signIndex] || [];
@@ -225,57 +257,77 @@ const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
         return (
           <g key={signIndex} className="group">
             {layout.type === 'rect' ? (
-              <rect x={layout.x} y={layout.y} width={layout.width} height={layout.height} fill={isLagnaSign ? "rgba(245, 166, 35, 0.12)" : "#10141F"} stroke={isLagnaSign ? "#F5A623" : "#1E2433"} strokeWidth={isLagnaSign ? "2" : "1.5"} className="hover:fill-[#141A2B] transition-colors" />
+              <rect x={layout.x} y={layout.y} width={layout.width} height={layout.height} fill={isLagnaSign ? "#FFF8EE" : "#FFFFFF"} stroke={isLagnaSign ? "#E67E22" : "rgba(230, 126, 34, 0.25)"} strokeWidth={isLagnaSign ? "1.5" : "1"} className="hover:fill-[#F7F1E8] transition-colors" />
             ) : (
-              <polygon points={layout.points} fill={isLagnaSign ? "rgba(245, 166, 35, 0.12)" : "#10141F"} stroke={isLagnaSign ? "#F5A623" : "#1E2433"} strokeWidth={isLagnaSign ? "2" : "1.5"} className="hover:fill-[#141A2B] transition-colors" />
+              <polygon points={layout.points} fill={isLagnaSign ? "#FFF8EE" : "#FFFFFF"} stroke={isLagnaSign ? "#E67E22" : "rgba(230, 126, 34, 0.25)"} strokeWidth={isLagnaSign ? "1.5" : "1"} className="hover:fill-[#F7F1E8] transition-colors" />
             )}
-            <text x={layout.label.x} y={layout.label.y} textAnchor="middle" fill={isLagnaSign ? "#F5A623" : "#D1D5DB"} fontSize="10" fontWeight="bold" fontFamily='"Noto Sans Telugu", sans-serif'>{getSignAbbreviation(signIndex)} (H{houseNum})</text>
+            <text x={layout.label.x} y={layout.label.y} textAnchor="middle" fill={isLagnaSign ? "#E67E22" : "#8A7B6E"} fontSize="10" fontWeight="bold" fontFamily="sans-serif">{getSignAbbreviation(signIndex)} (H{houseNum})</text>
             {renderPlanetChips(planets, layout.center.x, layout.center.y)}
           </g>
         );
       })}
-      <rect x="133.33" y="133.33" width="133.34" height="133.34" fill="#10141F" stroke="#1E2433" strokeWidth="1.5" />
-      <text x="200" y="190" textAnchor="middle" fill="#F5A623" fontSize="16" fontWeight="bold" fontFamily="serif">{displayBadge}</text>
-      <text x="200" y="215" textAnchor="middle" fill="#8FA8FF" fontSize="12" fontFamily='"Noto Sans Telugu", sans-serif'>Lagna: {ascSignName}</text>
+      <rect x="133.33" y="133.33" width="133.34" height="133.34" fill="#FDFBF7" stroke="rgba(230, 126, 34, 0.25)" strokeWidth="1.5" />
+      <text x="200" y="190" textAnchor="middle" fill="#E67E22" fontSize="16" fontWeight="700" letterSpacing="0.15em" fontFamily="serif">{displayBadge}</text>
+      <text x="200" y="215" textAnchor="middle" fill="#8A7B6E" fontSize="11" fontWeight="600" fontFamily="sans-serif">Lagna: {ascSignName}</text>
     </svg>
   );
 
   return (
-    <div className={`bg-[#10141F] rounded-2xl border-2 ${borderClasses} p-5 sm:p-6 shadow-sm overflow-hidden flex flex-col`}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-[#1E2433] pb-4">
-        <h3 className="text-lg font-serif text-[#F5F5F7] font-semibold tracking-wide uppercase">
-          {cardTitle}
-        </h3>
+    <div className="bg-white rounded-2xl border border-[#D4C5B9]/50 shadow-[0px_2px_12px_rgba(44,62,80,0.06)] overflow-hidden flex flex-col">
+      <div className="px-4 sm:px-5 py-3.5 border-b border-[#D4C5B9]/30 flex flex-wrap justify-between items-center bg-[#FDFBF7] gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#E67E22]" />
+          <h3 className="font-serif font-bold text-base sm:text-lg text-[#2C3E50]">
+            {cardTitle}
+          </h3>
+        </div>
         
-        <div className="flex bg-[#0A0E17] rounded-full p-1 border border-[#1E2433] shrink-0 self-start sm:self-auto">
+        <div className="flex bg-[#F5ECE1] p-1 rounded-xl border border-[#D4C5B9]/40 text-xs font-semibold gap-1">
           <button
+            type="button"
             onClick={() => onChartStyleChange('south-indian')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
               chartStyle === 'south-indian'
-                ? 'bg-[#F5A623] text-white shadow-sm'
-                : 'text-[#B0B8C6] hover:text-white'
+                ? 'bg-white text-[#E67E22] shadow-xs font-bold'
+                : 'text-[#8A7B6E] hover:text-[#2C3E50]'
             }`}
           >
-            South Indian
+            South
           </button>
           <button
-            onClick={() => onChartStyleChange('east-indian')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              chartStyle === 'east-indian'
-                ? 'bg-[#F5A623] text-white shadow-sm'
-                : 'text-[#B0B8C6] hover:text-white'
+            type="button"
+            onClick={() => onChartStyleChange('north-indian')}
+            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              chartStyle === 'north-indian'
+                ? 'bg-white text-[#E67E22] shadow-xs font-bold'
+                : 'text-[#8A7B6E] hover:text-[#2C3E50]'
             }`}
           >
-            East Indian
+            North
+          </button>
+          <button
+            type="button"
+            onClick={() => onChartStyleChange('east-indian')}
+            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              chartStyle === 'east-indian'
+                ? 'bg-white text-[#E67E22] shadow-xs font-bold'
+                : 'text-[#8A7B6E] hover:text-[#2C3E50]'
+            }`}
+          >
+            East
           </button>
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center py-2">
+      <div className="p-4 sm:p-5 bg-[#F7F1E8]/20 flex flex-col items-center justify-center min-h-[300px]">
         {chartData ? (
-          chartStyle === 'south-indian' ? renderSouthIndianChart() : renderEastIndianChart()
+          chartStyle === 'south-indian' 
+            ? renderSouthIndianChart() 
+            : chartStyle === 'north-indian' 
+              ? renderNorthIndianChart() 
+              : renderEastIndianChart()
         ) : (
-          <div className="text-[#9CA3AF] text-sm">Chart data unavailable</div>
+          <div className="text-[#8A7B6E] text-sm">Chart data unavailable</div>
         )}
       </div>
     </div>
@@ -283,3 +335,4 @@ const LagnaChartCard: React.FC<LagnaChartCardProps> = ({
 };
 
 export default LagnaChartCard;
+

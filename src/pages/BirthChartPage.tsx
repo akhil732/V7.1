@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, Edit3, Compass, LayoutGrid, Shield, Sparkles, Clock, Calendar, 
-  Layers, Printer, ArrowLeft, MessageSquare, BookOpen, Orbit, Heart
+  Layers, Printer, ArrowLeft, MessageSquare, BookOpen, Heart, Orbit
 } from 'lucide-react';
 import { SavedPerson } from '../types/marriageMatch';
 import { BirthDetails } from '../types';
 import { UnifiedAstrologyChart } from '../components/UnifiedAstrologyChart';
-import { PlanetTable } from '../components/PlanetTable';
-import { NavamshaTable } from '../components/NavamshaTable';
+import { PlanetaryStrengthView } from '../components/PlanetaryStrengthView';
 import { TransitAnalysisView } from '../components/TransitAnalysisView';
 import { VimshottariDashaView } from '../components/VimshottariDashaView';
 import { PanchangamView } from '../components/PanchangamView';
@@ -26,7 +25,7 @@ import { generateSanathanamSnapshot } from '../lib/services/SanathanamReportServ
 import { useKPChart } from '../hooks/useKPChart';
 import { computeLiveTransitSnapshot } from '../lib/engines/LiveTransitEngine';
 
-export type BirthChartTab = 'overview' | 'd1' | 'transit' | 'd9' | 'dasha' | 'partner' | 'report' | 'ai';
+export type BirthChartTab = 'overview' | 'd1' | 'transit' | 'dasha' | 'partner' | 'report' | 'ai';
 
 interface BirthChartPageProps {
   horoscopeReport: any | null;
@@ -291,9 +290,8 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
 
   const tabs: { key: BirthChartTab; label: string; icon: React.ReactNode }[] = [
     { key: 'overview', label: 'Overview', icon: <Compass className="w-4 h-4" /> },
-    { key: 'd1', label: 'D1', icon: <LayoutGrid className="w-4 h-4" /> },
+    { key: 'd1', label: 'Planet Strength', icon: <Shield className="w-4 h-4" /> },
     { key: 'transit', label: 'Transit', icon: <Orbit className="w-4 h-4" /> },
-    { key: 'd9', label: 'D9', icon: <Sparkles className="w-4 h-4" /> },
     { key: 'dasha', label: 'Vimsottara Dasha', icon: <Clock className="w-4 h-4" /> },
     { key: 'partner', label: language === 'en' ? 'Life Partner' : (language === 'hi' ? 'जीवन साथी' : 'జీవన సహచర'), icon: <Heart className="w-4 h-4" /> },
     { key: 'report', label: 'Report', icon: <BookOpen className="w-4 h-4" /> },
@@ -510,13 +508,14 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
               <div className="flex items-center justify-between border-b border-[#D4C5B9]/30 pb-2">
                 <h3 className="font-serif font-bold text-base sm:text-lg text-[#2C3E50] flex items-center gap-2">
                   <LayoutGrid className="w-4 h-4 text-[#E67E22]" />
-                  <span>Natal Triple Charts (Rasi, Moon & Bhava)</span>
+                  <span>Triple Charts (D1 Rasi, Live Transit & D9 Navamsha)</span>
                 </h3>
               </div>
               {kpChart ? (
                 <RVATripleCharts
                   kpChart={kpChart}
                   horoscopeData={horoscopeReport}
+                  transitSnapshot={transitSnapshot}
                 />
               ) : (
                 <div className="p-8 text-center text-sm text-[#8A7B6E] bg-white rounded-2xl border border-[#D4C5B9]/40">
@@ -527,19 +526,11 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
           </div>
         )}
 
-        {/* TAB 2: D1 RASI CHART */}
+        {/* TAB 2: PLANET STRENGTH */}
         {activeTab === 'd1' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Master D1 Chart */}
-            <UnifiedAstrologyChart
-              chartType="D1"
-              horoscopeData={horoscopeReport}
-              title="D1 Rasi Natal Chart"
-              subtitle="Lagna Chart • Physical Incarnation, Bodily Constitution & Lifelong Blueprint"
-            />
-
-            {/* Planetary Coordinates & Insights Table */}
-            <PlanetTable
+            {/* Planetary Strength Profile Table */}
+            <PlanetaryStrengthView
               horoscopeData={horoscopeReport}
               language={language}
             />
@@ -561,25 +552,6 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
             {/* Transit Analysis & Natal Impact Table */}
             <TransitAnalysisView
               transitSnapshot={transitSnapshot}
-              horoscopeData={horoscopeReport}
-              language={language}
-            />
-          </div>
-        )}
-
-        {/* TAB 4: D9 NAVAMSHA */}
-        {activeTab === 'd9' && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Master D9 Chart */}
-            <UnifiedAstrologyChart
-              chartType="D9"
-              horoscopeData={horoscopeReport}
-              title="D9 Navamsha Chart"
-              subtitle="9th Harmonic Division • Dharma, Inner Soul Strength & Marital Harmony"
-            />
-
-            {/* D9 Navamsha Analysis Table & Vargottama Highlights */}
-            <NavamshaTable
               horoscopeData={horoscopeReport}
               language={language}
             />
