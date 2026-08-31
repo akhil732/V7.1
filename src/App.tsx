@@ -307,7 +307,7 @@ export default function App() {
       />
 
       {/* MAIN VIEWPORT CANVAS */}
-      <main className={`flex-1 w-full ${activePage === 'home' || activePage === 'birth-chart' || activePage === 'marriage-match' ? 'pb-0' : 'pb-16'}`}>
+      <main className={`flex-1 w-full ${activePage === 'login' ? 'pb-0' : 'pb-16'}`}>
         {activePage === 'home' && (
           <HomePageV1
             activeProfile={activeProfile}
@@ -315,6 +315,7 @@ export default function App() {
             onSelectActiveProfile={(p) => setActiveProfile(p)}
             onNavigatePage={(page) => setActivePage(page as any)}
             onCreateNewProfile={handleCreateNewProfile}
+            onGenerateNewKundali={handleFormSubmit}
             language={language}
             todayPanchangam={todayPanchangam}
             todayGochara={todayGochara}
@@ -414,8 +415,8 @@ export default function App() {
         )}
       </main>
 
-      {/* GLOBAL BOTTOM NAVIGATION BAR (Hidden on home as HomePageV1 renders its exact design bar, and hidden on login) */}
-      {activePage !== 'home' && activePage !== 'login' && (
+      {/* GLOBAL BOTTOM NAVIGATION BAR (Rendered across all pages except login) */}
+      {activePage !== 'login' && (
         <BottomNav
           activePage={activePage}
           onNavigatePage={(page) => setActivePage(page)}

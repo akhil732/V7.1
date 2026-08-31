@@ -7,6 +7,8 @@ import {
 } from '../lib/engines/LiveTransitEngine';
 import { SavedPerson } from '../types/marriageMatch';
 import { VagdenuWidget } from '../components/VagdenuWidget';
+import { BirthForm } from '../components/BirthForm';
+import { BirthDetails } from '../types';
 import { Music } from 'lucide-react';
 
 // South Indian chart layout definitions matching DivisionalChart constants
@@ -221,6 +223,7 @@ export interface HomePageV1Props {
   onNavigatePage?: (page: 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam') => void;
   onCreateNewProfile?: () => void;
   onSelectActiveProfile?: (profile: SavedPerson) => void;
+  onGenerateNewKundali?: (details: BirthDetails) => void;
   todayPanchangam?: any | null;
   todayGochara?: any | null;
   todayPanchangamLoading?: boolean;
@@ -234,6 +237,7 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
   onNavigatePage = () => {},
   onCreateNewProfile = () => {},
   onSelectActiveProfile = () => {},
+  onGenerateNewKundali,
   todayPanchangam = null,
   todayGochara = null,
   todayPanchangamLoading = false,
@@ -423,7 +427,7 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
   return (
     <div className="bg-[#FDFBF7] text-[#2C3E50] min-h-screen antialiased flex flex-col font-sans selection:bg-[#FFDDB3] selection:text-[#684300]">
       {/* Main Content */}
-      <main className="py-6 pb-[100px] px-5 max-w-md mx-auto w-full flex flex-col gap-6 flex-1">
+      <main className="py-6 pb-6 px-5 max-w-md mx-auto w-full flex flex-col gap-6 flex-1">
         {/* Today Header Section */}
         <section className="flex flex-col gap-1.5 pt-2">
           <h2 className="font-serif text-[32px] sm:text-[34px] font-bold text-[#E67E22] leading-tight tracking-tight">
@@ -447,405 +451,21 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
           </button>
         </section>
 
-        {/* Transit Chart Card Widget */}
-        <section className="bg-white rounded-2xl shadow-[0px_2px_12px_rgba(44,62,80,0.06)] border border-[#D4C5B9]/40 overflow-hidden flex flex-col transition-all">
-          <div className="px-4 py-3.5 border-b border-[#D4C5B9]/30 flex justify-between items-center bg-[#FDFBF7]/80">
-            <button 
-              onClick={() => onNavigatePage('panchangam')}
-              className="flex items-center gap-2 text-left group cursor-pointer hover:opacity-80 transition-opacity"
-            >
-              <h3 className="font-serif text-lg font-bold text-[#2C3E50] group-hover:text-[#E67E22] transition-colors">
-                Transit Chart
-              </h3>
-              <span className="material-symbols-outlined text-[16px] text-[#E67E22] opacity-0 group-hover:opacity-100 transition-opacity">
-                open_in_new
-              </span>
-            </button>
-            <div className="flex items-center gap-1.5 bg-[#F5ECE1] px-2.5 py-1 rounded-full border border-[#D4C5B9]/30">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#BA1A1A] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#BA1A1A]"></span>
-              </span>
-              <span className="text-[10px] font-semibold text-[#684300] uppercase tracking-wider">
-                LIVE · {formattedLiveTime}
-              </span>
-            </div>
-          </div>
-
-          {/* Chart Style Switcher Tabs */}
-          <div className="px-4 pt-3 pb-1 flex justify-center items-center bg-[#FDFBF7]/50 border-b border-[#D4C5B9]/20">
-            <div className="inline-flex bg-[#F5ECE1] p-1 rounded-xl border border-[#D4C5B9]/40 text-xs font-semibold gap-1">
-              <button
-                onClick={() => setChartStyle('south')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                  chartStyle === 'south'
-                    ? 'bg-white text-[#E67E22] shadow-xs font-bold'
-                    : 'text-[#8A7B6E] hover:text-[#2C3E50]'
-                }`}
-              >
-                South Indian
-              </button>
-              <button
-                onClick={() => setChartStyle('east')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                  chartStyle === 'east'
-                    ? 'bg-white text-[#E67E22] shadow-xs font-bold'
-                    : 'text-[#8A7B6E] hover:text-[#2C3E50]'
-                }`}
-              >
-                East Indian
-              </button>
-            </div>
-          </div>
-
-          <div className="p-4 sm:p-5 flex justify-center items-center bg-[#F7F1E8]/30">
-            {chartStyle === 'south' ? (
-              /* Self-contained SVG South Indian Chart matching DivisionalChart layout */
-              <div className="w-full max-w-[280px] aspect-square">
-                <svg 
-                  viewBox="0 0 280 280" 
-                  className="w-full h-full bg-white select-none shadow-[inset_0px_0px_1px_rgba(230,126,34,0.1)] rounded-lg overflow-hidden border border-[#E67E22]/30"
-                >
-                  {/* Center 2x2 Area */}
-                  <rect 
-                    x="70" 
-                    y="70" 
-                    width="140" 
-                    height="140" 
-                    fill="#FDFBF7" 
-                    stroke="rgba(230, 126, 34, 0.25)" 
-                    strokeWidth="1" 
-                  />
-
-                  {/* Center Emblem: Sun Icon + GOCHARA */}
-                  <g className="opacity-80">
-                    <circle 
-                      cx="140" 
-                      cy="126" 
-                      r="12" 
-                      fill="none" 
-                      stroke="#E67E22" 
-                      strokeWidth="1.8" 
-                    />
-                    <g stroke="#E67E22" strokeWidth="1.8" strokeLinecap="round">
-                      <line x1="140" y1="106" x2="140" y2="101" />
-                      <line x1="140" y1="146" x2="140" y2="151" />
-                      <line x1="120" y1="126" x2="115" y2="126" />
-                      <line x1="160" y1="126" x2="165" y2="126" />
-                      <line x1="126" y1="112" x2="122" y2="108" />
-                      <line x1="154" y1="140" x2="158" y2="144" />
-                      <line x1="126" y1="140" x2="122" y2="144" />
-                      <line x1="154" y1="112" x2="158" y2="108" />
-                    </g>
-                    <text 
-                      x="140" 
-                      y="162" 
-                      textAnchor="middle" 
-                      fill="#E67E22" 
-                      fontSize="10" 
-                      fontWeight="600" 
-                      letterSpacing="0.25em" 
-                      fontFamily="Inter, sans-serif"
-                    >
-                      GOCHARA
-                    </text>
-                  </g>
-
-                  {/* 12 Outer Sign Cells in South Indian Order */}
-                  {Object.entries(SOUTH_INDIAN_LAYOUTS).map(([sStr, layout]) => {
-                    const sNum = parseInt(sStr);
-                    const planets = planetsBySignIndex[sNum] || [];
-                    const x = layout.col * 70;
-                    const y = layout.row * 70;
-
-                    return (
-                      <g 
-                        key={sNum}
-                        className="cursor-pointer group"
-                        onClick={() => setSelectedSignDetail({ signName: layout.name, planets })}
-                      >
-                        <rect 
-                          x={x} 
-                          y={y} 
-                          width="70" 
-                          height="70" 
-                          fill="#FFFFFF" 
-                          stroke="rgba(230, 126, 34, 0.25)" 
-                          strokeWidth="1" 
-                          className="hover:fill-[#F7F1E8] transition-colors"
-                        />
-
-                        <text 
-                          x={x + 7} 
-                          y={y + 16} 
-                          fill="#8A7B6E" 
-                          fontSize="9" 
-                          fontWeight="600" 
-                          letterSpacing="0.05em" 
-                          fontFamily="Inter, sans-serif"
-                        >
-                          {layout.code}
-                        </text>
-
-                        {planets.length === 0 ? null : planets.length === 1 ? (
-                          <text 
-                            x={x + 63} 
-                            y={y + 60} 
-                            textAnchor="end" 
-                            fill="#E67E22" 
-                            fontSize="14" 
-                            fontWeight="700" 
-                            fontFamily="'JetBrains Mono', monospace"
-                          >
-                            {planets[0]}
-                          </text>
-                        ) : planets.length === 2 ? (
-                          <g>
-                            <text 
-                              x={x + 63} 
-                              y={y + 47} 
-                              textAnchor="end" 
-                              fill="#E67E22" 
-                              fontSize="11" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[0]}
-                            </text>
-                            <text 
-                              x={x + 63} 
-                              y={y + 61} 
-                              textAnchor="end" 
-                              fill="#E67E22" 
-                              fontSize="11" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[1]}
-                            </text>
-                          </g>
-                        ) : (
-                          <g>
-                            <text 
-                              x={x + 63} 
-                              y={y + 36} 
-                              textAnchor="end" 
-                              fill="#E67E22" 
-                              fontSize="9.5" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[0]}
-                            </text>
-                            <text 
-                              x={x + 63} 
-                              y={y + 49} 
-                              textAnchor="end" 
-                              fill="#E67E22" 
-                              fontSize="9.5" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[1]}
-                            </text>
-                            <text 
-                              x={x + 63} 
-                              y={y + 62} 
-                              textAnchor="end" 
-                              fill="#E67E22" 
-                              fontSize="9.5" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets.slice(2).join(' ')}
-                            </text>
-                          </g>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-            ) : (
-              /* Self-contained SVG East Indian Chart matching DivisionalChart layout */
-              <div className="w-full max-w-[280px] aspect-square">
-                <svg 
-                  viewBox="0 0 400 400" 
-                  className="w-full h-full bg-white select-none shadow-[inset_0px_0px_1px_rgba(230,126,34,0.1)] rounded-lg overflow-hidden border border-[#E67E22]/30"
-                >
-                  {/* Center Square */}
-                  <rect 
-                    x="133.33" 
-                    y="133.33" 
-                    width="133.34" 
-                    height="133.34" 
-                    fill="#FDFBF7" 
-                    stroke="rgba(230, 126, 34, 0.25)" 
-                    strokeWidth="1.5" 
-                  />
-
-                  {/* Center Emblem: Sun Icon + GOCHARA */}
-                  <g className="opacity-80">
-                    <circle 
-                      cx="200" 
-                      cy="180" 
-                      r="16" 
-                      fill="none" 
-                      stroke="#E67E22" 
-                      strokeWidth="2" 
-                    />
-                    <g stroke="#E67E22" strokeWidth="2" strokeLinecap="round">
-                      <line x1="200" y1="154" x2="200" y2="147" />
-                      <line x1="200" y1="206" x2="200" y2="213" />
-                      <line x1="174" y1="180" x2="167" y2="180" />
-                      <line x1="226" y1="180" x2="233" y2="180" />
-                      <line x1="182" y1="162" x2="177" y2="157" />
-                      <line x1="218" y1="198" x2="223" y2="203" />
-                      <line x1="182" y1="198" x2="177" y2="203" />
-                      <line x1="218" y1="162" x2="223" y2="157" />
-                    </g>
-                    <text 
-                      x="200" 
-                      y="230" 
-                      textAnchor="middle" 
-                      fill="#E67E22" 
-                      fontSize="12" 
-                      fontWeight="600" 
-                      letterSpacing="0.25em" 
-                      fontFamily="Inter, sans-serif"
-                    >
-                      GOCHARA
-                    </text>
-                  </g>
-
-                  {/* 12 Signs in East Indian Layout */}
-                  {Object.entries(EAST_INDIAN_LAYOUTS).map(([sStr, layout]) => {
-                    const sNum = parseInt(sStr);
-                    const planets = planetsBySignIndex[sNum] || [];
-
-                    return (
-                      <g 
-                        key={sNum}
-                        className="cursor-pointer group"
-                        onClick={() => setSelectedSignDetail({ signName: layout.name, planets })}
-                      >
-                        {layout.type === 'rect' ? (
-                          <rect 
-                            x={layout.x} 
-                            y={layout.y} 
-                            width={layout.width} 
-                            height={layout.height} 
-                            fill="#FFFFFF" 
-                            stroke="rgba(230, 126, 34, 0.25)" 
-                            strokeWidth="1.5" 
-                            className="hover:fill-[#F7F1E8] transition-colors"
-                          />
-                        ) : (
-                          <polygon 
-                            points={layout.points} 
-                            fill="#FFFFFF" 
-                            stroke="rgba(230, 126, 34, 0.25)" 
-                            strokeWidth="1.5" 
-                            className="hover:fill-[#F7F1E8] transition-colors"
-                          />
-                        )}
-
-                        {/* Sign code label */}
-                        <text 
-                          x={layout.label.x} 
-                          y={layout.label.y} 
-                          textAnchor="middle" 
-                          fill="#8A7B6E" 
-                          fontSize="11" 
-                          fontWeight="600" 
-                          letterSpacing="0.05em" 
-                          fontFamily="Inter, sans-serif"
-                        >
-                          {layout.code}
-                        </text>
-
-                        {/* Transiting Planet Abbreviations */}
-                        {planets.length === 0 ? null : planets.length === 1 ? (
-                          <text 
-                            x={layout.center.x} 
-                            y={layout.center.y + 6} 
-                            textAnchor="middle" 
-                            fill="#E67E22" 
-                            fontSize="16" 
-                            fontWeight="700" 
-                            fontFamily="'JetBrains Mono', monospace"
-                          >
-                            {planets[0]}
-                          </text>
-                        ) : planets.length === 2 ? (
-                          <g>
-                            <text 
-                              x={layout.center.x} 
-                              y={layout.center.y - 4} 
-                              textAnchor="middle" 
-                              fill="#E67E22" 
-                              fontSize="13" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[0]}
-                            </text>
-                            <text 
-                              x={layout.center.x} 
-                              y={layout.center.y + 12} 
-                              textAnchor="middle" 
-                              fill="#E67E22" 
-                              fontSize="13" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[1]}
-                            </text>
-                          </g>
-                        ) : (
-                          <g>
-                            <text 
-                              x={layout.center.x} 
-                              y={layout.center.y - 8} 
-                              textAnchor="middle" 
-                              fill="#E67E22" 
-                              fontSize="11" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[0]}
-                            </text>
-                            <text 
-                              x={layout.center.x} 
-                              y={layout.center.y + 4} 
-                              textAnchor="middle" 
-                              fill="#E67E22" 
-                              fontSize="11" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets[1]}
-                            </text>
-                            <text 
-                              x={layout.center.x} 
-                              y={layout.center.y + 16} 
-                              textAnchor="middle" 
-                              fill="#E67E22" 
-                              fontSize="10" 
-                              fontWeight="700" 
-                              fontFamily="'JetBrains Mono', monospace"
-                            >
-                              {planets.slice(2).join(' ')}
-                            </text>
-                          </g>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-            )}
-          </div>
+        {/* New Kundali Form Widget */}
+        <section className="bg-white rounded-2xl p-5 sm:p-6 border border-[#D4C5B9]/40 shadow-[0px_4px_20px_rgba(26,35,126,0.04)]">
+          <BirthForm
+            onSubmit={(details) => {
+              if (onGenerateNewKundali) {
+                onGenerateNewKundali(details);
+              }
+            }}
+            loading={false}
+            language={language}
+            embedded={true}
+            title="New Kundali"
+            subtitle="Enter birth details for precise calculation."
+            submitButtonText="Generate"
+          />
         </section>
 
         {/* Vāgdhenu Sanskrit Chant Quick Studio */}
@@ -896,65 +516,6 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
           </button>
         </section>
       </main>
-
-      {/* Bottom Navigation Bar */}
-      <nav className="bg-white shadow-[0px_-4px_20px_rgba(0,0,0,0.05)] rounded-t-2xl fixed bottom-0 left-0 w-full h-[64px] z-50 flex justify-around items-center px-4 pb-safe border-t border-[#D4C5B9]/30">
-        {/* Home (Active) */}
-        <button 
-          onClick={() => onNavigatePage('home')}
-          aria-current="page" 
-          className="flex flex-col items-center justify-center text-[#E67E22] relative after:content-[''] after:w-1 after:h-1 after:bg-[#E67E22] after:rounded-full after:mt-1 scale-95 transition-transform duration-200 ease-in-out w-16 h-full group cursor-pointer"
-        >
-          <span className="material-symbols-outlined mb-0.5 text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            home
-          </span>
-          <span className="text-[10px] font-semibold tracking-tight">Home</span>
-        </button>
-
-        {/* Kundali */}
-        <button 
-          onClick={() => onNavigatePage('kundali')}
-          className="flex flex-col items-center justify-center text-[#564337] hover:text-[#E67E22] transition-colors w-16 h-full group cursor-pointer"
-        >
-          <span className="material-symbols-outlined mb-0.5 text-[22px]">
-            grid_view
-          </span>
-          <span className="text-[10px] font-medium tracking-tight">Kundali</span>
-        </button>
-
-        {/* Chant */}
-        <button 
-          onClick={() => onNavigatePage('chant' as any)}
-          className="flex flex-col items-center justify-center text-[#564337] hover:text-[#E67E22] transition-colors w-16 h-full group cursor-pointer"
-        >
-          <span className="material-symbols-outlined mb-0.5 text-[22px]">
-            music_note
-          </span>
-          <span className="text-[10px] font-medium tracking-tight">Chant</span>
-        </button>
-
-        {/* Matching */}
-        <button 
-          onClick={() => onNavigatePage('marriage-match')}
-          className="flex flex-col items-center justify-center text-[#564337] hover:text-[#E67E22] transition-colors w-16 h-full group cursor-pointer"
-        >
-          <span className="material-symbols-outlined mb-0.5 text-[22px]">
-            favorite
-          </span>
-          <span className="text-[10px] font-medium tracking-tight">Matching</span>
-        </button>
-
-        {/* Profile */}
-        <button 
-          onClick={() => onNavigatePage('profile')}
-          className="flex flex-col items-center justify-center text-[#564337] hover:text-[#E67E22] transition-colors w-16 h-full group cursor-pointer"
-        >
-          <span className="material-symbols-outlined mb-0.5 text-[22px]">
-            person
-          </span>
-          <span className="text-[10px] font-medium tracking-tight">Profile</span>
-        </button>
-      </nav>
 
       {/* Full Panchangam Modal */}
       {showPanchangamModal && (

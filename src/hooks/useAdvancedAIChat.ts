@@ -24,7 +24,7 @@ export interface ChatSession {
   messages: ConversationMessage[];
 }
 
-export function useAdvancedAIChat({ birthData, horoscopeData, userId, language = 'te' }: UseAdvancedAIChatOptions) {
+export function useAdvancedAIChat({ birthData, horoscopeData, userId, language = 'en' }: UseAdvancedAIChatOptions) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
@@ -271,7 +271,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
           userQuery: text,
           conversationHistory: newHistory,
           persona: activePersona,
-          language: 'te' // Enforce Telugu language
+          language: language || 'en'
         }),
         signal: abortControllerRef.current.signal
       });
@@ -323,7 +323,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
           conversationHistory: messages,
           persona: activePersona,
           userId,
-          language: 'te'
+          language: language || 'en'
         });
         accumulated = fallbackRes.content;
       }

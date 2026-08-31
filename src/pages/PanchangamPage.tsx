@@ -599,8 +599,50 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
       {/* ──────────────────────────────────────────────────────────── */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-5 space-y-6 animate-in fade-in duration-200">
         
+        {/* Vedic Almanac Header Card */}
+        <section className="bg-gradient-to-br from-[#FFF7ED] via-[#FDFBF7] to-[#F5ECE1] rounded-2xl p-5 sm:p-6 border border-[#E67E22]/30 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E67E22]/20 pb-3">
+            <div>
+              <span className="text-xs font-bold text-[#E67E22] uppercase tracking-widest block">
+                Vedic Almanac • దిన పంచాంగ విశేషాలు
+              </span>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#2C3E50] mt-0.5">
+                {formattedSelectedDate}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-3 py-1 bg-white/80 border border-[#E67E22]/30 rounded-full text-xs font-bold text-[#E67E22] shadow-2xs">
+                {panchangDetails.samvatsara}
+              </span>
+              <span className="px-3 py-1 bg-white/80 border border-[#D4C5B9]/40 rounded-full text-xs font-medium text-[#2C3E50]">
+                {panchangDetails.masa}
+              </span>
+            </div>
+          </div>
+
+          {/* Sub almanac details: Ayana, Ritu, Masa */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">Ayana (ఆయనం)</span>
+              <span className="font-semibold text-[#2C3E50]">{panchangDetails.ayana}</span>
+            </div>
+            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">Ritu (ఋతువు)</span>
+              <span className="font-semibold text-[#2C3E50]">{panchangDetails.ritu}</span>
+            </div>
+            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">Surya Rasi (సూర్య రాశి)</span>
+              <span className="font-semibold text-[#2C3E50]">{panchangDetails.sunSign}</span>
+            </div>
+            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">Chandra Rasi (చంద్ర రాశి)</span>
+              <span className="font-semibold text-[#2C3E50]">{panchangDetails.moonSign}</span>
+            </div>
+          </div>
+        </section>
+
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 1. TOP SECTION: TRANSIT CHART (REAL-TIME GOCHARA) */}
+        {/* TRANSIT CHART (REAL-TIME GOCHARA) */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         <section className="bg-white rounded-2xl shadow-[0px_2px_12px_rgba(44,62,80,0.06)] border border-[#D4C5B9]/50 overflow-hidden flex flex-col">
           
@@ -1028,48 +1070,6 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* 2. THE FIVE SACRED LIMBS (PANCHA-ANGA) & CALENDAR DETAILS */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        
-        {/* Vedic Almanac Header Card */}
-        <section className="bg-gradient-to-br from-[#FFF7ED] via-[#FDFBF7] to-[#F5ECE1] rounded-2xl p-5 sm:p-6 border border-[#E67E22]/30 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E67E22]/20 pb-3">
-            <div>
-              <span className="text-xs font-bold text-[#E67E22] uppercase tracking-widest block">
-                Vedic Almanac • దిన పంచాంగ విశేషాలు
-              </span>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#2C3E50] mt-0.5">
-                {formattedSelectedDate}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-3 py-1 bg-white/80 border border-[#E67E22]/30 rounded-full text-xs font-bold text-[#E67E22] shadow-2xs">
-                {panchangDetails.samvatsara}
-              </span>
-              <span className="px-3 py-1 bg-white/80 border border-[#D4C5B9]/40 rounded-full text-xs font-medium text-[#2C3E50]">
-                {panchangDetails.masa}
-              </span>
-            </div>
-          </div>
-
-          {/* Sub almanac details: Ayana, Ritu, Masa */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
-            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Ayana (ఆయనం)</span>
-              <span className="font-semibold text-[#2C3E50]">{panchangDetails.ayana}</span>
-            </div>
-            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Ritu (ఋతువు)</span>
-              <span className="font-semibold text-[#2C3E50]">{panchangDetails.ritu}</span>
-            </div>
-            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Surya Rasi (సూర్య రాశి)</span>
-              <span className="font-semibold text-[#2C3E50]">{panchangDetails.sunSign}</span>
-            </div>
-            <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Chandra Rasi (చంద్ర రాశి)</span>
-              <span className="font-semibold text-[#2C3E50]">{panchangDetails.moonSign}</span>
-            </div>
-          </div>
-        </section>
 
         {/* 5 Core Angas Grid */}
         <section className="space-y-3">

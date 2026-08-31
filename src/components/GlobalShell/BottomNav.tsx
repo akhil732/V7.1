@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, LayoutGrid, Heart, Music, User } from 'lucide-react';
+import { Home, LayoutGrid, Heart, Music } from 'lucide-react';
 
 export type ActivePage = 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'chant' | 'login';
 
@@ -18,7 +18,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activePage, onNavigatePage
     { id: 'kundali', label: 'Kundali', icon: LayoutGrid },
     { id: 'chant', label: 'Chant', icon: Music },
     { id: 'marriage-match', label: 'Matching', icon: Heart },
-    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (

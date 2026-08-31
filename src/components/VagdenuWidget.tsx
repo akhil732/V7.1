@@ -1,24 +1,9 @@
 import React, { useState } from 'react';
-import { Music, Volume2, Loader, Sparkles, ArrowRight } from 'lucide-react';
+import { Music, Volume2, Loader } from 'lucide-react';
 
 interface VagdenuWidgetProps {
   onNavigatePage?: (page: string) => void;
 }
-
-const QUICK_SAMPLES = [
-  {
-    label: 'Ganesha',
-    text: 'वक्रतुण्ड महाकाय सूर्यकोटिसमप्रभ ।\nनिर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा ॥'
-  },
-  {
-    label: 'Gītā 2.47',
-    text: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन ।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि ॥'
-  },
-  {
-    label: 'Guru',
-    text: 'गुरुर्ब्रह्मा गुरुर्विष्णुः गुरुर्देवो महेश्वरः ।\nगुरुः साक्षात् परं ब्रह्म तस्मै श्रीगुरवे नमः ॥'
-  }
-];
 
 export const VagdenuWidget: React.FC<VagdenuWidgetProps> = ({ onNavigatePage }) => {
   const [verseText, setVerseText] = useState(
@@ -81,52 +66,15 @@ export const VagdenuWidget: React.FC<VagdenuWidgetProps> = ({ onNavigatePage }) 
       <div className="absolute -right-8 -top-8 w-24 h-24 bg-[#E67E22]/10 rounded-full blur-xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#E67E22]/15 text-[#E67E22] flex items-center justify-center shadow-xs">
-            <Music className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="font-serif font-bold text-base text-[#2C3E50] flex items-center gap-1.5">
-              <span>🎶 Vāgdhenu Chant</span>
-              <span className="text-[10px] uppercase tracking-wider bg-[#E67E22]/10 text-[#E67E22] px-1.5 py-0.5 rounded font-mono font-semibold">
-                Metered TTS
-              </span>
-            </h3>
-            <p className="text-[11px] text-[#564337]/80">
-              Classical Sanskrit prosody & pārāyaṇa recitation
-            </p>
-          </div>
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg bg-[#E67E22]/15 text-[#E67E22] flex items-center justify-center shadow-xs">
+          <Music className="w-4 h-4" />
         </div>
-
-        <button
-          onClick={() => onNavigatePage?.('chant')}
-          className="flex items-center gap-1 text-xs font-semibold text-[#E67E22] hover:text-[#D35400] transition-colors cursor-pointer"
-        >
-          <span>Studio</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Quick sample chips */}
-      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-        <span className="text-[10px] text-[#8A7B6E] font-medium flex items-center gap-1 mr-1">
-          <Sparkles className="w-3 h-3 text-[#E67E22]" />
-          Samples:
-        </span>
-        {QUICK_SAMPLES.map((sample) => (
-          <button
-            key={sample.label}
-            type="button"
-            onClick={() => {
-              setVerseText(sample.text);
-              setError(null);
-            }}
-            className="text-[11px] px-2.5 py-1 bg-white/80 hover:bg-white border border-[#E67E22]/20 hover:border-[#E67E22]/50 text-[#564337] rounded-full transition-all cursor-pointer shadow-2xs font-medium"
-          >
-            {sample.label}
-          </button>
-        ))}
+        <div>
+          <h3 className="font-serif font-bold text-base text-[#2C3E50]">
+            Vedic Chant
+          </h3>
+        </div>
       </div>
 
       {/* Input textarea */}

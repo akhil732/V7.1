@@ -18,7 +18,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (saved === 'en' || saved === 'te' || saved === 'hi') {
       return saved as Language;
     }
-    return 'te'; // Default to Telugu for regional preference
+    return 'en'; // Default to English
   });
 
   useEffect(() => {
