@@ -13,7 +13,9 @@ import {
   Sliders, 
   RefreshCw,
   Play,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface ChantPageProps {
@@ -108,6 +110,7 @@ export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack })
   );
   const [selectedMeter, setSelectedMeter] = useState('AUTO');
   const [seed, setSeed] = useState(60);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -209,69 +212,13 @@ export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack })
   };
 
   return (
-    <div className="min-h-screen bg-surface-cream text-on-surface pb-28">
-      {/* Top Banner / Breadcrumb */}
-      <div className="bg-white border-b border-[#D4C5B9]/40 sticky top-0 z-30 shadow-2xs backdrop-blur-md bg-white/95">
-        <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {onBack && (
-              <button
-                type="button"
-                onClick={onBack}
-                className="p-1.5 rounded-xl hover:bg-[#F5ECE1] text-[#2C3E50] transition-colors cursor-pointer"
-                title="Back to Home"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#E67E22] animate-pulse" />
-                <h1 className="font-serif font-bold text-lg text-[#2C3E50]">
-                  Vāgdhenu Sanskrit Chant Studio
-                </h1>
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#E67E22]/10 text-[#E67E22] font-bold border border-[#E67E22]/20">
-                  Prosody TTS
-                </span>
-              </div>
-              <p className="text-xs text-[#564337]/75">
-                Classical Chandas metered pārāyaṇa chanting engine
-              </p>
-            </div>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs text-[#8A7B6E]">
-            <span>Model: IndicF5 + BigVGAN-v2</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="space-y-6 pb-20 max-w-5xl mx-auto px-3 sm:px-4 pt-3 font-sans text-[#2C3E50]">
+      {/* Main Studio Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
-        {/* Intro Hero Card */}
-        <div className="bg-gradient-to-r from-[#2C3E50] to-[#1A252F] text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-64 h-64 bg-[#E67E22]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10 space-y-3">
-            <div className="flex items-center gap-2 text-[#E67E22]">
-              <Music className="w-5 h-5" />
-              <span className="text-xs uppercase tracking-widest font-bold">Pārāyaṇa Swara Synthesis</span>
-            </div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#FFF3E5]">
-              Meter-Faithful Sanskrit Recitation
-            </h2>
-            <p className="text-sm text-gray-300 max-w-2xl leading-relaxed">
-              Experience traditional metered chant audio computed through neural flow-matching prosody templates. 
-              Vāgdhenu preserves pure Sanskrit conjuncts and syllable weights (Laghu/Guru) without modern colloquial schwa-deletion.
-            </p>
-          </div>
-        </div>
-
-        {/* Main Interactive Studio Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Left / Top Form (7 Cols) */}
-          <div className="lg:col-span-7 space-y-5">
-            <div className="bg-white border border-[#D4C5B9]/50 rounded-2xl p-5 shadow-xs space-y-4">
+        {/* Left / Top Form (7 Cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white border border-[#D4C5B9]/50 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
               
               {/* Text Input Header */}
               <div className="flex items-center justify-between">
@@ -324,57 +271,75 @@ e.g.
                 </div>
               </div>
 
-              {/* Controls: Meter Selector & Seed Slider */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#D4C5B9]/30">
-                
-                {/* Meter Selection */}
-                <div>
-                  <label className="block text-xs font-bold text-[#2C3E50] mb-1.5 flex items-center gap-1.5">
+              {/* Advanced Settings Collapsible Dropdown Reveal */}
+              <div className="pt-2 border-t border-[#D4C5B9]/30">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full flex items-center justify-between py-2 text-xs font-bold text-[#564337] hover:text-[#E67E22] transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-[#E67E22]" />
-                    <span>Meter (Chandas)</span>
-                  </label>
-                  <select
-                    value={selectedMeter}
-                    onChange={(e) => setSelectedMeter(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#FDFBF7] border border-[#D4C5B9]/80 rounded-xl text-xs text-[#2C3E50] focus:outline-none focus:border-[#E67E22] focus:ring-2 focus:ring-[#E67E22]/20 font-medium"
-                  >
-                    {METERS.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-[#8A7B6E] mt-1 line-clamp-1">
-                    {METERS.find(m => m.id === selectedMeter)?.desc}
-                  </p>
-                </div>
+                    <span>Advanced Settings</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] font-normal text-[#8A7B6E]">
+                    <span>{showAdvanced ? 'Hide' : 'Show'}</span>
+                    {showAdvanced ? <ChevronUp className="w-4 h-4 text-[#E67E22]" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </button>
 
-                {/* Seed Control */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-[#2C3E50] flex items-center gap-1.5">
-                      <RefreshCw className="w-3.5 h-3.5 text-[#E67E22]" />
-                      <span>Acoustic Seed</span>
-                    </label>
-                    <span className="text-xs font-mono font-bold text-[#E67E22] bg-[#E67E22]/10 px-1.5 py-0.5 rounded">
-                      {seed}
-                    </span>
+                {showAdvanced && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 mt-1 border-t border-[#D4C5B9]/20 animate-in fade-in duration-150">
+                    {/* Meter Selection */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#2C3E50] mb-1.5 flex items-center gap-1.5">
+                        <Sliders className="w-3.5 h-3.5 text-[#E67E22]" />
+                        <span>Meter (Chandas)</span>
+                      </label>
+                      <select
+                        value={selectedMeter}
+                        onChange={(e) => setSelectedMeter(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#FDFBF7] border border-[#D4C5B9]/80 rounded-xl text-xs text-[#2C3E50] focus:outline-none focus:border-[#E67E22] focus:ring-2 focus:ring-[#E67E22]/20 font-medium"
+                      >
+                        {METERS.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-[#8A7B6E] mt-1 line-clamp-1">
+                        {METERS.find(m => m.id === selectedMeter)?.desc}
+                      </p>
+                    </div>
+
+                    {/* Seed Control */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-[#2C3E50] flex items-center gap-1.5">
+                          <RefreshCw className="w-3.5 h-3.5 text-[#E67E22]" />
+                          <span>Acoustic Seed</span>
+                        </label>
+                        <span className="text-xs font-mono font-bold text-[#E67E22] bg-[#E67E22]/10 px-1.5 py-0.5 rounded">
+                          {seed}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1000"
+                        step="5"
+                        value={seed}
+                        onChange={(e) => setSeed(parseInt(e.target.value, 10))}
+                        className="w-full h-2 bg-[#D4C5B9]/40 rounded-lg appearance-none cursor-pointer accent-[#E67E22]"
+                      />
+                      <div className="flex justify-between text-[10px] text-[#8A7B6E] mt-1">
+                        <span>0 (Default)</span>
+                        <span>500</span>
+                        <span>1000 (Randomized)</span>
+                      </div>
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1000"
-                    step="5"
-                    value={seed}
-                    onChange={(e) => setSeed(parseInt(e.target.value, 10))}
-                    className="w-full h-2 bg-[#D4C5B9]/40 rounded-lg appearance-none cursor-pointer accent-[#E67E22]"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#8A7B6E] mt-1">
-                    <span>0 (Default)</span>
-                    <span>500</span>
-                    <span>1000 (Randomized)</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Action Button */}
@@ -556,8 +521,6 @@ e.g.
           </div>
 
         </div>
-
-      </div>
     </div>
   );
 };
