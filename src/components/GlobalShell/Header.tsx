@@ -3,7 +3,7 @@ import { ArrowLeft, LogIn } from 'lucide-react';
 import { SavedPerson } from '../../types/marriageMatch';
 import { useAuth } from '../../context/AuthContext';
 
-export type NavPage = 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'login';
+export type NavPage = 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'chant' | 'login';
 
 interface GlobalHeaderProps {
   logo?: string;

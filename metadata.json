@@ -1,6 +1,6 @@
 {
   "name": "Jyothishya-Sanatanam V3",
-  "description": "Vedic Astrology Companion and Parashari Kundali Snapshot analysis with Effort × Fate interpretation and 2-year forecast engine.",
+  "description": "Vedic Astrology Companion, Parashari Kundali Snapshot analysis, and Vāgdhenu Sanskrit Metered Chant TTS Studio.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Home, LayoutGrid, Heart, Bot, User } from 'lucide-react';
+import { Home, LayoutGrid, Heart, Music, User } from 'lucide-react';
 
-export type ActivePage = 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'login';
+export type ActivePage = 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'chant' | 'login';
 
 interface BottomNavProps {
   activePage: ActivePage;
@@ -16,6 +16,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activePage, onNavigatePage
   }> = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'kundali', label: 'Kundali', icon: LayoutGrid },
+    { id: 'chant', label: 'Chant', icon: Music },
     { id: 'marriage-match', label: 'Matching', icon: Heart },
     { id: 'profile', label: 'Profile', icon: User },
   ];

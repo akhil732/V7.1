@@ -9,6 +9,7 @@ import { AIConsultationPage } from './pages/AIConsultationPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { KundaliPage } from './pages/KundaliPage';
 import { PanchangamPage } from './pages/PanchangamPage';
+import { ChantPage } from './pages/ChantPage';
 import { LoginPage } from './pages/LoginPage';
 import { BirthForm } from './components/BirthForm';
 import { BirthDetails } from './types';
@@ -39,7 +40,7 @@ export default function App() {
   const { language, setLanguage } = useLanguage();
 
   // Navigation State
-  const [activePage, setActivePage] = useState<'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'login'>('home');
+  const [activePage, setActivePage] = useState<'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'chant' | 'login'>('home');
 
   const [isFormSubmitting, setIsFormSubmitting] = useState<boolean>(false);
 
@@ -395,6 +396,13 @@ export default function App() {
             language={language}
             onBack={() => setActivePage('home')}
             onNavigatePage={(page) => setActivePage(page)}
+          />
+        )}
+
+        {activePage === 'chant' && (
+          <ChantPage
+            language={language}
+            onBack={() => setActivePage('home')}
           />
         )}
 

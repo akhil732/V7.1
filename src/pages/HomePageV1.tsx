@@ -6,6 +6,8 @@ import {
   SIGN_NAMES
 } from '../lib/engines/LiveTransitEngine';
 import { SavedPerson } from '../types/marriageMatch';
+import { VagdenuWidget } from '../components/VagdenuWidget';
+import { Music } from 'lucide-react';
 
 // South Indian chart layout definitions matching DivisionalChart constants
 export const SOUTH_INDIAN_LAYOUTS: Record<number, {
@@ -846,6 +848,11 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
           </div>
         </section>
 
+        {/* Vāgdhenu Sanskrit Chant Quick Studio */}
+        <section>
+          <VagdenuWidget onNavigatePage={(page) => onNavigatePage(page as any)} />
+        </section>
+
         {/* Shortcuts Grid */}
         <section className="grid grid-cols-2 gap-3.5">
           {/* Button 1: My Kundalis */}
@@ -913,6 +920,17 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
             grid_view
           </span>
           <span className="text-[10px] font-medium tracking-tight">Kundali</span>
+        </button>
+
+        {/* Chant */}
+        <button 
+          onClick={() => onNavigatePage('chant' as any)}
+          className="flex flex-col items-center justify-center text-[#564337] hover:text-[#E67E22] transition-colors w-16 h-full group cursor-pointer"
+        >
+          <span className="material-symbols-outlined mb-0.5 text-[22px]">
+            music_note
+          </span>
+          <span className="text-[10px] font-medium tracking-tight">Chant</span>
         </button>
 
         {/* Matching */}
