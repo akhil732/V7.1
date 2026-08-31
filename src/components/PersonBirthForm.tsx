@@ -467,7 +467,7 @@ const PersonBirthForm: React.FC<PersonBirthFormProps> = ({
                   placeholder=" "
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="peer w-full pt-5 pb-1.5 px-3 pr-8 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors disabled:opacity-50"
+                  className="peer w-full pt-5 pb-1.5 px-3 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors disabled:opacity-50"
                 />
                 <label
                   htmlFor={`dob-${gender}`}
@@ -475,7 +475,6 @@ const PersonBirthForm: React.FC<PersonBirthFormProps> = ({
                 >
                   {l.dob}
                 </label>
-                <Calendar className="w-4 h-4 absolute right-2 top-4 text-[#C6C5D4] pointer-events-none" />
               </div>
 
               {/* Time of Birth */}
@@ -489,7 +488,7 @@ const PersonBirthForm: React.FC<PersonBirthFormProps> = ({
                   placeholder=" "
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="peer w-full pt-5 pb-1.5 px-3 pr-8 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors disabled:opacity-50"
+                  className="peer w-full pt-5 pb-1.5 px-3 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors disabled:opacity-50"
                 />
                 <label
                   htmlFor={`tob-${gender}`}
@@ -497,26 +496,6 @@ const PersonBirthForm: React.FC<PersonBirthFormProps> = ({
                 >
                   {l.tob}
                 </label>
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => setShowTimePicker(!showTimePicker)}
-                  className="absolute right-2 top-4 text-[#C6C5D4] hover:text-[#E67E22] transition-colors cursor-pointer"
-                  title="Open Time Picker"
-                >
-                  <Clock className="w-4 h-4" />
-                </button>
-
-                {/* Popover Wheel Picker */}
-                {showTimePicker && (
-                  <div className="absolute right-0 w-72 mt-2 z-50 shadow-xl">
-                    <TimeWheelPicker
-                      value={time || '12:00:00'}
-                      onChange={(newTime24) => setTime(newTime24)}
-                      onClose={() => setShowTimePicker(false)}
-                    />
-                  </div>
-                )}
               </div>
             </div>
 

@@ -417,7 +417,7 @@ export const BirthForm: React.FC<BirthFormProps> = ({
                   placeholder=" "
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="peer w-full pt-5 pb-1.5 px-3 pr-8 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors"
+                  className="peer w-full pt-5 pb-1.5 px-3 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors"
                 />
                 <label
                   htmlFor="native-dob-input"
@@ -425,9 +425,6 @@ export const BirthForm: React.FC<BirthFormProps> = ({
                 >
                   {l.dob}
                 </label>
-                <span className="material-symbols-outlined absolute right-2 top-4 text-[#C6C5D4] text-[18px] pointer-events-none">
-                  calendar_today
-                </span>
               </div>
 
               {/* Time of Birth */}
@@ -440,7 +437,7 @@ export const BirthForm: React.FC<BirthFormProps> = ({
                   placeholder=" "
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="peer w-full pt-5 pb-1.5 px-3 pr-8 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors"
+                  className="peer w-full pt-5 pb-1.5 px-3 bg-transparent border-0 border-b border-[#C6C5D4] text-sm sm:text-base text-[#071E27] font-mono focus:outline-none focus:border-[#E67E22] transition-colors"
                 />
                 <label
                   htmlFor="native-tob-input"
@@ -448,27 +445,6 @@ export const BirthForm: React.FC<BirthFormProps> = ({
                 >
                   {l.tob}
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowTimePicker(!showTimePicker)}
-                  className="absolute right-2 top-4 text-[#C6C5D4] hover:text-[#E67E22] transition-colors cursor-pointer"
-                  title="Open Time Picker"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    schedule
-                  </span>
-                </button>
-
-                {/* Popover Wheel Picker */}
-                {showTimePicker && (
-                  <div className="absolute right-0 w-72 mt-2 z-50 shadow-xl">
-                    <TimeWheelPicker
-                      value={time || '12:00:00'}
-                      onChange={(newTime24) => setTime(newTime24)}
-                      onClose={() => setShowTimePicker(false)}
-                    />
-                  </div>
-                )}
               </div>
             </div>
 
