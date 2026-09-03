@@ -9,6 +9,8 @@ import {
   computeUnifiedKPGroundTruth,
   buildSystemPrompt
 } from '../components/AdvancedAITab/UnifiedKPGroundTruthEngine';
+import { generateVedicBirthChartMarkdown } from '../lib/vedicMarkdownGenerator';
+import { computeLiveTransitSnapshot } from '../lib/engines/LiveTransitEngine';
 
 interface UseAdvancedAIChatOptions {
   birthData: BirthDetails;
@@ -253,7 +255,39 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
       const queryIntent = (service as any)['queryEngine'].recognizeIntent(text);
       const domainClassification = (service as any)['queryEngine'].classifyDomain(queryIntent);
 
-      const systemPrompt = buildSystemPrompt(activePersona, unifiedGroundTruth, birthData.name || 'Native');
+      const baseSystemPrompt = buildSystemPrompt(activePersona, unifiedGroundTruth, birthData.name || 'Native');
+
+      // ─── NATAL CHART SOURCE OF TRUTH ───────────────────────────────────────
+      // Generate the structured MD report and prepend it to the system prompt.
+      // This is the single authoritative natal data block for all AI responses.
+      // The AI MUST treat values in this section as ground truth and NEVER
+      // fabricate, estimate, or contradict any planetary position, house placement,
+      // nakshatra, dasha date, or dignity listed here.
+      const d1 = horoscopeData?.horoscope?.divisional_charts?.["D-1_rasi"] || horoscopeData?.rasi || {};
+      const moonSign = d1.Moon?.sign || 'Aries';
+      const transitData = computeLiveTransitSnapshot(moonSign, new Date());
+      const birthChartMd = generateVedicBirthChartMarkdown(birthData, horoscopeData, transitData);
+      const systemPrompt = `═══════════════════════════════════════════════════════════════════
+NATAL CHART — SOURCE OF TRUTH (IMMUTABLE REFERENCE DATA)
+═══════════════════════════════════════════════════════════════════
+
+The following Vedic birth chart data is the ONLY authoritative source for all planetary positions, 
+house placements, nakshatra, dasha timelines, and dignities in this consultation.
+
+RULES:
+• Every claim you make about a planet, house, dasha, or dignity MUST be traceable to this data.
+• If a value is not present in this data, respond with "Not found in chart data" — do NOT estimate.
+• Do NOT override these values with your training data or general astrological assumptions.
+• Do NOT hallucinate nakshatra lords, degrees, or divisional chart placements not listed here.
+
+${birthChartMd}
+
+═══════════════════════════════════════════════════════════════════
+AI ENGINE CONFIGURATION & ANALYSIS RULES (follows below)
+═══════════════════════════════════════════════════════════════════
+
+${baseSystemPrompt}`;
+      // ────────────────────────────────────────────────────────────────────────
 
       const userMsgPayload = (service as any)['buildUserMessage'](
         text,

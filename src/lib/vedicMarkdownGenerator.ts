@@ -1,6 +1,7 @@
 import { BirthDetails } from '../types';
 import { SavedPerson } from '../types/marriageMatch';
 import { getFullDashaTimeline, getAntardashasForMd } from './engines/DashaEngine';
+import { LiveTransitSnapshot } from './engines/LiveTransitEngine';
 
 function formatDateForMd(d: Date): string {
   if (!d || isNaN(d.getTime())) return '';
@@ -60,21 +61,35 @@ function generateVimshottariDashaMarkdownSection(
 
 /**
  * Generates structured Vedic Birth Chart Markdown report formatted for AI parsing.
+ *
+ * SOURCE OF TRUTH POLICY:
+ * - When horoscopeData is present (API response from JHora), ALWAYS use the dynamic
+ *   generator so that live ephemeris values are used. The benchmark fallback is ONLY
+ *   used when horoscopeData is null/undefined (offline or before first API call).
+ * - Never route through the hardcoded benchmark when real data is available, even for
+ *   the developer profile — this prevents training-data hallucination leaking in.
  */
 export function generateVedicBirthChartMarkdown(
   person: BirthDetails | SavedPerson,
-  horoscopeData?: any
+  horoscopeData?: any,
+  transitData?: LiveTransitSnapshot
 ): string {
-  const name = person.name ? person.name.trim() : 'Native';
-  const nameLower = name.toLowerCase();
-
-  // If this is Akhil kumar / Akhil Kumar (the reference chart provided in the prompt), output exact benchmark values
-  if (nameLower.includes('akhil')) {
-    return generateAkhilBenchmarkMarkdown(name, person, horoscopeData);
+  // Always use live API data when available — name-based hardcode is explicitly removed
+  // to prevent benchmark values overriding real ephemeris positions.
+  if (horoscopeData) {
+    return generateDynamicVedicBirthChartMarkdown(person, horoscopeData, transitData);
   }
 
-  // Otherwise, construct dynamically from birth details and horoscope payload
-  return generateDynamicVedicBirthChartMarkdown(person, horoscopeData);
+  // No API data yet — use the benchmark fallback for the developer profile only,
+  // or a minimal skeleton for any other profile.
+  const name = person.name ? person.name.trim() : 'Native';
+  const nameLower = name.toLowerCase();
+  if (nameLower.includes('akhil')) {
+    return generateAkhilBenchmarkMarkdown(name, person, undefined);
+  }
+
+  // Generic skeleton when no data available
+  return generateDynamicVedicBirthChartMarkdown(person, undefined, transitData);
 }
 
 function generateAkhilBenchmarkMarkdown(name: string, person?: BirthDetails | SavedPerson, horoscopeData?: any): string {
@@ -276,7 +291,8 @@ ${dashaSection}
 
 function generateDynamicVedicBirthChartMarkdown(
   person: BirthDetails | SavedPerson,
-  hd: any
+  hd: any,
+  transitData?: LiveTransitSnapshot
 ): string {
   const dashaSection = generateVimshottariDashaMarkdownSection(person, hd);
   const name = person.name ? person.name.trim() : 'Native';
@@ -312,7 +328,61 @@ function generateDynamicVedicBirthChartMarkdown(
 
   const moonNak = nakshatras.Moon || { nakshatra: 'Vishakha', pada: 3 };
   const janmaNak = cal.Nakshatram || `${moonNak.nakshatra}, Pada ${moonNak.pada || 3}`;
-  const janmaNakLord = cal.NakshatraLord || 'Jupiter';
+  const janmaNakLord = cal.NakshatraLord || moonNak.lord || 'Jupiter';
+
+  // Avakhada Chakra — pull from API where available, flag as "Not in data" when absent
+  const avakhada = hd?.avakhadaChakra || hd?.horoscope?.avakhada_chakra || {};
+  const gana = avakhada.Gana || cal.Gana || 'Not in data';
+  const nadi = avakhada.Nadi || cal.Nadi || 'Not in data';
+  const yoni = avakhada.Yoni || cal.Yoni || 'Not in data';
+  const tatva = avakhada.Tatva || cal.Tatva || 'Not in data';
+  const varna = avakhada.Varna || cal.Varna || 'Not in data';
+  const vashya = avakhada.Vashya || cal.Vashya || 'Not in data';
+  const paya = avakhada.Paya || cal.Paya || 'Not in data';
+  const nameSyllable = avakhada.NameSyllable || cal.NameSyllable || 'Not in data';
+
+  // Planetary states from API (dignity lookup)
+  const planetaryStates = hd?.horoscope?.planetary_states || hd?.planetary_states || {};
+
+  function getPlanetDignity(pName: string, pSign: string): string {
+    // Try API planetary_states first
+    const state = planetaryStates[pName];
+    if (state?.dignity) return state.dignity;
+    if (state?.state) return state.state;
+
+    // Classical dignity rules fallback
+    const exaltedSigns: Record<string, string> = {
+      Sun: 'Aries', Moon: 'Taurus', Mars: 'Capricorn', Mercury: 'Virgo',
+      Jupiter: 'Cancer', Venus: 'Pisces', Saturn: 'Libra', Rahu: 'Gemini', Ketu: 'Sagittarius'
+    };
+    const debilitatedSigns: Record<string, string> = {
+      Sun: 'Libra', Moon: 'Scorpio', Mars: 'Cancer', Mercury: 'Pisces',
+      Jupiter: 'Capricorn', Venus: 'Virgo', Saturn: 'Aries', Rahu: 'Sagittarius', Ketu: 'Gemini'
+    };
+    const ownSigns: Record<string, string[]> = {
+      Sun: ['Leo'], Moon: ['Cancer'], Mars: ['Aries', 'Scorpio'],
+      Mercury: ['Gemini', 'Virgo'], Jupiter: ['Sagittarius', 'Pisces'],
+      Venus: ['Taurus', 'Libra'], Saturn: ['Capricorn', 'Aquarius']
+    };
+    if (exaltedSigns[pName] === pSign) return 'Exalted';
+    if (debilitatedSigns[pName] === pSign) return 'Debilitated';
+    if (ownSigns[pName]?.includes(pSign)) return 'Own Sign';
+    if (pName === 'Jupiter' && pSign === 'Sagittarius') return 'Mool Trikon';
+    return 'Neutral';
+  }
+
+  function isCombust(pName: string, pData: any): boolean {
+    if (pName === 'Sun' || pName === 'Rahu' || pName === 'Ketu') return false;
+    const state = planetaryStates[pName];
+    if (typeof state?.isCombust === 'boolean') return state.isCombust;
+    if (typeof pData?.isCombust === 'boolean') return pData.isCombust;
+    // Proximity fallback: combust if within 8° of Sun
+    if (typeof pData?.longitude === 'number' && typeof sun?.longitude === 'number') {
+      const diff = Math.abs(pData.longitude - sun.longitude);
+      return Math.min(diff, 360 - diff) < 8;
+    }
+    return false;
+  }
 
   const ascIndex = signNames.indexOf(ascSign) !== -1 ? signNames.indexOf(ascSign) : 10; // Default Aquarius (10)
 
@@ -338,17 +408,19 @@ function generateDynamicVedicBirthChartMarkdown(
     const pSign = pData.sign || 'Aries';
     const sIdx = signNames.indexOf(pSign);
     const houseNum = sIdx !== -1 ? ((sIdx - ascIndex + 12) % 12) + 1 : 1;
-    const pDeg = typeof pData.longitude === 'number' ? `${Math.floor(pData.longitude)}°${Math.floor((pData.longitude % 1) * 60)}'` : '15°00\'';
-    const pNak = nakshatras[pName]?.nakshatra || 'Vishakha';
-    const pPada = nakshatras[pName]?.pada || 2;
-    const pNakLord = nakshatras[pName]?.lord || 'Jupiter';
-    const isRetro = pData.isRetrograde || pName === 'Rahu' || pName === 'Ketu';
+    const pDeg = typeof pData.longitude === 'number' ? `${Math.floor(pData.longitude)}°${Math.floor((pData.longitude % 1) * 60)}'` : 'N/A';
+    const pNak = nakshatras[pName]?.nakshatra || 'N/A';
+    const pPada = nakshatras[pName]?.pada || 'N/A';
+    const pNakLord = nakshatras[pName]?.lord || 'N/A';
+    const isRetro = pData.isRetrograde || planetaryStates[pName]?.isRetrograde || pName === 'Rahu' || pName === 'Ketu';
     const motionStr = isRetro ? 'Retrograde' : 'Direct';
+    const combustStr = isCombust(pName, pData) ? 'Combust' : 'Not combust';
+    const dignity = getPlanetDignity(pName, pSign);
     const planetDisp = isRetro ? `${pName} (R)` : pName;
 
     houseGrouping[houseNum].push(planetDisp);
 
-    d1PlanetRows += `| ${pName} | ${pSign} | ${houseNum} | ${pDeg} | ${pNak} | ${pPada} | ${pNakLord} | Neutral | ${motionStr} | Not combust | Functional Benefic |\n`;
+    d1PlanetRows += `| ${pName} | ${pSign} | ${houseNum} | ${pDeg} | ${pNak} | ${pPada} | ${pNakLord} | ${dignity} | ${motionStr} | ${combustStr} | — |\n`;
   });
 
   let houseGroupingRows = '';
@@ -367,6 +439,17 @@ function generateDynamicVedicBirthChartMarkdown(
     const houseNum = sIdx !== -1 ? ((sIdx - d9AscIdx + 12) % 12) + 1 : 1;
     d9PlanetRows += `| ${pName} | ${pSign} | ${houseNum} |\n`;
   });
+
+  const transitSection = transitData ? `
+---
+
+## 12. Live Gochara (Transit) Data
+*As of ${new Date().toLocaleString()}*
+
+| Planet | Sign | House from Moon | Classification | Classical Result |
+|---|---|---|---|---|
+${Object.entries(transitData.positions).map(([pName, p]) => `| ${pName} | ${p.sign} | ${p.houseFromMoon} | ${p.classification} | ${p.classicalResultTelugu} |`).join('\n')}
+` : '';
 
   return `> Pre-computed Vedic (Parashari) kundali data structured for AI parsing. Upload this file as project knowledge or paste at the start of a chat. All planetary positions use the Lahiri ayanamsa.
 
@@ -391,21 +474,20 @@ function generateDynamicVedicBirthChartMarkdown(
 
 | Element | Value |
 |---|---|
-| Weekday | ${cal.Weekday || 'Monday'} |
-| Tithi | ${cal.Tithi || 'Shukla Pratipada (1)'} |
-| Paksha | ${cal.Paksha || 'Shukla Paksha'} |
+| Weekday | ${cal.Weekday || cal.Day || 'Not in data'} |
+| Tithi | ${cal.Tithi || 'Not in data'} |
+| Paksha | ${cal.Paksha || 'Not in data'} |
 | Nakshatra | ${janmaNak} |
-| Yoga | ${cal.Yoga || 'Saubhagya (4)'} |
-| Karana | ${cal.Karana || 'Kimstughna'} |
-| Rasi Lord | ${signLords[moonSign] || 'Venus'} |
-| Sunrise | ${cal['Sun Rise'] || '6:04 AM'} |
-| Sunset | ${cal['Sun Set'] || '5:27 PM'} |
-| Moonrise | ${cal['Moon Rise'] || '5:59 AM'} |
-| Moonset | ${cal['Moon Set'] || '5:47 PM'} |
-| Abhijit Muhurta | 11:22 AM – 12:10 PM |
-| Rahukaal | 7:30 AM to 8:55 AM |
-| Gulika Kaal | 2:36 PM to 4:02 PM |
-| Yamakanta | 11:46 AM to 1:11 PM |
+| Yoga | ${cal.Yoga || 'Not in data'} |
+| Karana | ${cal.Karana || 'Not in data'} |
+| Rasi Lord | ${signLords[moonSign] || 'Not in data'} |
+| Sunrise | ${cal['Sun Rise'] || cal.Sunrise || 'Not in data'} |
+| Sunset | ${cal['Sun Set'] || cal.Sunset || 'Not in data'} |
+| Moonrise | ${cal['Moon Rise'] || cal.Moonrise || 'Not in data'} |
+| Moonset | ${cal['Moon Set'] || cal.Moonset || 'Not in data'} |
+| Rahukaal | ${cal.Rahukaal || cal['Rahukaal'] || 'Not in data'} |
+| Gulika Kaal | ${cal['Gulika Kaal'] || cal.GalikaKaal || 'Not in data'} |
+| Yamakanta | ${cal.Yamakanta || 'Not in data'} |
 
 ---
 
@@ -421,14 +503,14 @@ function generateDynamicVedicBirthChartMarkdown(
 | Sun Sign | ${sunSign} |
 | Janma Nakshatra | ${janmaNak} |
 | Janma Nakshatra Lord | ${janmaNakLord} |
-| Name Start Syllable | Teaa |
-| Gana | Rakshasa |
-| Nadi | Antya |
-| Yoni | Vyaghra |
-| Tatva | Air |
-| Varna | Shudra |
-| Vashya | Nara |
-| Paya | Silver |
+| Name Start Syllable | ${nameSyllable} |
+| Gana | ${gana} |
+| Nadi | ${nadi} |
+| Yoni | ${yoni} |
+| Tatva | ${tatva} |
+| Varna | ${varna} |
+| Vashya | ${vashya} |
+| Paya | ${paya} |
 
 ---
 
@@ -453,19 +535,29 @@ ${houseGroupingRows}
 
 ## 6. Planetary Aspects (Drishti)
 
-Standard Parashari aspects: all planets aspect the 7th house from themselves. Mars additionally aspects 4th and 8th. Jupiter additionally aspects 5th and 9th. Saturn additionally aspects 3rd and 10th. Rahu/Ketu aspect 5th, 7th, 9th.
+Standard Parashari aspects: all planets aspect the 7th house from themselves. Mars additionally aspects 4th and 8th. Jupiter additionally aspects 5th and 9th. Saturn additionally aspects 3rd and 10th. Rahu/Ketu aspect 5th, 7th, 9th. Houses computed from natal house of each planet.
 
-| Planet | Houses Aspected (from natal house) |
-|---|---|
-| Sun | 7 |
-| Moon | 7 |
-| Mars | 4, 7, 8 |
-| Mercury | 7 |
-| Jupiter | 5, 7, 9 |
-| Venus | 7 |
-| Saturn | 3, 7, 10 |
-| Rahu | 5, 7, 9 |
-| Ketu | 5, 7, 9 |
+| Planet | Natal House | Houses Aspected |
+|---|---|---|
+${(() => {
+  // Special aspect offsets beyond the universal 7th
+  const specialAspects: Record<string, number[]> = {
+    Mars:    [4, 8],
+    Jupiter: [5, 9],
+    Saturn:  [3, 10],
+    Rahu:    [5, 9],
+    Ketu:    [5, 9]
+  };
+  return planetNames.map(pName => {
+    const pData = d1[pName] || {};
+    const pSign = pData.sign || 'Aries';
+    const sIdx = signNames.indexOf(pSign);
+    const houseNum = sIdx !== -1 ? ((sIdx - ascIndex + 12) % 12) + 1 : 1;
+    const offsets = [7, ...(specialAspects[pName] || [])];
+    const aspectedHouses = offsets.map(o => ((houseNum + o - 2) % 12) + 1).sort((a, b) => a - b);
+    return `| ${pName} | H${houseNum} | ${aspectedHouses.map(h => `H${h}`).join(', ')} |`;
+  }).join('\n');
+})()}
 
 ---
 
@@ -476,13 +568,68 @@ Navamsa is the divisional chart for marriage, dharma, and the inner strength of 
 | Planet | Navamsa Sign | Navamsa House |
 |---|---|---|
 ${d9PlanetRows}
-**Vargottama planets in D9 chart:** None.
+**Vargottama planets (same sign in D1 & D9):** ${(() => {
+  const vargottama = planetNames.filter(pName => {
+    const d1Sign = (d1[pName] || {}).sign;
+    const d9Sign = (d9[pName] || {}).sign;
+    return d1Sign && d9Sign && d1Sign === d9Sign;
+  });
+  return vargottama.length > 0 ? vargottama.join(', ') : 'None';
+})()}
 
 ---
 
 ## 8. Doshas Present
 
-None noted.
+${(() => {
+  const doshas: string[] = [];
+  // Manglik Dosha: Mars in H1, H2, H4, H7, H8, H12
+  const marsData = d1.Mars || {};
+  const marsSign = marsData.sign;
+  if (marsSign) {
+    const marsIdx = signNames.indexOf(marsSign);
+    const marsHouse = marsIdx !== -1 ? ((marsIdx - ascIndex + 12) % 12) + 1 : 0;
+    if ([1, 2, 4, 7, 8, 12].includes(marsHouse)) {
+      doshas.push(`Manglik Dosha (Mars in House ${marsHouse})`);
+    }
+  }
+  // Pitra Dosha: Sun + Rahu/Ketu in same house, or Sun in H9
+  const sunData = d1.Sun || {};
+  const sunSign = sunData.sign;
+  const rahuData = d1.Rahu || {};
+  if (sunSign && rahuData.sign && sunSign === rahuData.sign) {
+    doshas.push('Pitra Dosha (Sun conjunct Rahu)');
+  }
+  if (sunSign) {
+    const sunIdx = signNames.indexOf(sunSign);
+    const sunHouse = sunIdx !== -1 ? ((sunIdx - ascIndex + 12) % 12) + 1 : 0;
+    if (sunHouse === 9 && !doshas.some(d => d.includes('Pitra'))) {
+      doshas.push('Possible Pitra Dosha (Sun in House 9)');
+    }
+  }
+  // Kaal Sarp: all planets between Rahu and Ketu
+  if (rahuData.sign) {
+    const rahuIdx = signNames.indexOf(rahuData.sign);
+    const ketuData = d1.Ketu || {};
+    const ketuIdx = signNames.indexOf(ketuData.sign || '');
+    if (rahuIdx !== -1 && ketuIdx !== -1) {
+      const coreplanets = planetNames.filter(p => p !== 'Rahu' && p !== 'Ketu');
+      const allBetween = coreplanets.every(p => {
+        const pIdx = signNames.indexOf((d1[p] || {}).sign || '');
+        if (pIdx === -1) return false;
+        // Check if pIdx is between rahuIdx and ketuIdx in one direction
+        let cur = rahuIdx;
+        while (cur !== ketuIdx) {
+          if (cur === pIdx) return true;
+          cur = (cur + 1) % 12;
+        }
+        return false;
+      });
+      if (allBetween) doshas.push('Kaal Sarp Dosha');
+    }
+  }
+  return doshas.length > 0 ? doshas.join('\n\n') : 'None detected from available data.';
+})()}
 
 ---
 
@@ -502,6 +649,8 @@ None noted.
 ---
 
 ${dashaSection}
+
+${transitSection}
 
 ---
 

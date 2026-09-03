@@ -9,8 +9,8 @@ interface ModelConfig {
 }
 
 const MODEL_REGISTRY: Record<string, ModelConfig> = {
-  'gemini-3.7-flash': {
-    name: 'gemini-3.7-flash',
+  'gemini-flash-latest': {
+    name: 'gemini-flash-latest',
     costPerMillionTokens: 0.075,
     maxOutputTokens: 8000,
     priority: 1,
@@ -23,8 +23,8 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
     priority: 2,
     rateLimit: { rpm: 1500, tpm: 1500000 }
   },
-  'gemini-flash-latest': {
-    name: 'gemini-flash-latest',
+  'gemini-3.7-flash': {
+    name: 'gemini-3.7-flash',
     costPerMillionTokens: 0.075,
     maxOutputTokens: 8000,
     priority: 3,
@@ -81,11 +81,11 @@ export class ModelRoutingService {
       return model.name;
     }
 
-    return 'gemini-3.7-flash';
+    return 'gemini-flash-latest';
   }
 
   recordUsage(model: string, inputTokens: number, outputTokens: number, traceId: string = 'system') {
-    const cfg = MODEL_REGISTRY[model] || MODEL_REGISTRY['gemini-3.7-flash'];
+    const cfg = MODEL_REGISTRY[model] || MODEL_REGISTRY['gemini-flash-latest'];
     const cost = ((inputTokens + outputTokens) / 1_000_000) * cfg.costPerMillionTokens;
     this.costUsed += cost;
     logStructured(traceId, 'info', 'Model usage recorded', { model, inputTokens, outputTokens, cost, costUsedTotal: this.costUsed });

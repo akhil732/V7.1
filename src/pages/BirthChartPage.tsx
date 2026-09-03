@@ -12,6 +12,7 @@ import { VimshottariDashaView } from '../components/VimshottariDashaView';
 import { PanchangamView } from '../components/PanchangamView';
 import { RVATripleCharts } from '../components/KP/RVATripleCharts';
 import { AdvancedAITab } from '../components/AdvancedAITab';
+import { FloatingAIChatWidget } from '../components/FloatingAIChatWidget';
 import { SanathanamReportPage } from '../components/BirthChartReport/turia/SanathanamReportPage';
 import { LifePartnerReport } from '../components/LifePartnerReport';
 import { Button } from '../components/design-system/Button';
@@ -607,8 +608,15 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
             />
           </div>
         )}
-
       </main>
+
+      <FloatingAIChatWidget
+        birthDetails={birthDetails}
+        horoscopeData={horoscopeReport}
+        language={language}
+        profiles={savedProfiles}
+        onSelectProfile={onSelectProfile}
+      />
     </div>
   );
 };

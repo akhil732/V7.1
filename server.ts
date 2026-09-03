@@ -74,7 +74,7 @@ const apiRateLimiter = new RateLimiter(120, 10);
 const geminiCircuitBreaker = new CircuitBreaker(5, 2, 45000);
 const modelRouter = new ModelRoutingService();
 
-const PRIMARY_MODELS = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-3.1-pro-preview'];
+const PRIMARY_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.1-pro-preview', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.7-flash'];
 
 const quotaExhaustedModels = new Map<string, number>();
 
@@ -88,8 +88,26 @@ function isModelQuotaExhausted(modelName: string): boolean {
   return true;
 }
 
-function markModelQuotaExhausted(modelName: string, durationMs: number = 300000) {
+function markModelQuotaExhausted(modelName: string, durationMs: number = 3600000) {
   quotaExhaustedModels.set(modelName, Date.now() + durationMs);
+}
+
+function isModelErrorOrQuota(errMsg: string): boolean {
+  if (!errMsg) return false;
+  const lower = errMsg.toLowerCase();
+  return (
+    lower.includes('429') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('quota') ||
+    lower.includes('503') ||
+    lower.includes('unavailable') ||
+    lower.includes('service unavailable') ||
+    lower.includes('high demand') ||
+    lower.includes('overloaded') ||
+    lower.includes('500') ||
+    lower.includes('502') ||
+    lower.includes('504')
+  );
 }
 
 async function sleep(ms: number) {
@@ -147,21 +165,18 @@ async function generateContentWithRetryAndFallback(
         }
       } catch (err: any) {
         const errMsg = err?.message || String(err);
-        const isQuota = errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded') || errMsg.includes('quota');
-
-        if (isQuota) {
+        if (isModelErrorOrQuota(errMsg)) {
           markModelQuotaExhausted(modelName);
-          console.warn(`[Gemini API] Quota limit reached for ${modelName}. Marked cooldown, switching immediately to next fallback model.`);
-          break; // Immediately move to next candidate model without retrying the quota-exhausted model
+          console.warn(`[Gemini API] Model ${modelName} unavailable/exhausted (${errMsg}). Cooldown marked, cascading to next candidate model.`);
+          break; // Immediately cascade to next candidate model
         }
 
-        const isTransient = errMsg.includes('503') || errMsg.includes('UNAVAILABLE') || errMsg.includes('high demand');
-        if (isTransient && attempt < maxRetriesPerModel - 1) {
-          const delay = (attempt + 1) * 600;
-          await sleep(delay);
+        if (attempt < maxRetriesPerModel - 1) {
+          await sleep((attempt + 1) * 600);
           continue;
         } else {
-          console.warn(`[Gemini API] Model ${modelName} (attempt ${attempt + 1}) warning:`, errMsg);
+          markModelQuotaExhausted(modelName);
+          console.warn(`[Gemini API] Model ${modelName} failed after ${maxRetriesPerModel} attempts:`, errMsg);
           break; // proceed to next model in cascade
         }
       }
@@ -387,7 +402,7 @@ Provide a detailed, search-grounded astrological analysis addressing the user qu
         }
       } catch (mErr: any) {
         const mErrMsg = mErr?.message || String(mErr);
-        if (mErrMsg.includes('429') || mErrMsg.includes('RESOURCE_EXHAUSTED') || mErrMsg.includes('Quota exceeded') || mErrMsg.includes('quota')) {
+        if (isModelErrorOrQuota(mErrMsg)) {
           markModelQuotaExhausted(modelName);
         }
         // Fall back cleanly to next model or ungrounded mode
@@ -484,7 +499,7 @@ app.post('/api/advanced-ai/stream', async (req, res) => {
 
     const defaultSysInstruction = systemInstructionOverride || `You are an elite master Vedic astrologer providing multi-turn streaming consultation in ${langName}. Always adhere strictly to Vedic Parashari principles, D1 Rasi, D9 Navamsha, divisional charts, Vimshottari Dasha-Antardasha, and current transits (Gochara) w.r.t Moon. Do not use KP terminology or modern psychological framing.`;
 
-    const streamCandidateModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.1-pro-preview'];
+    const streamCandidateModels = PRIMARY_MODELS;
     const availableStreamModels = streamCandidateModels.filter(m => !isModelQuotaExhausted(m));
     const streamModels = availableStreamModels.length > 0 ? availableStreamModels : streamCandidateModels;
     let streamSuccess = false;
@@ -534,7 +549,7 @@ app.post('/api/advanced-ai/stream', async (req, res) => {
         break;
       } catch (streamErr: any) {
         const sErrMsg = streamErr?.message || String(streamErr);
-        if (sErrMsg.includes('429') || sErrMsg.includes('RESOURCE_EXHAUSTED') || sErrMsg.includes('Quota exceeded') || sErrMsg.includes('quota')) {
+        if (isModelErrorOrQuota(sErrMsg)) {
           markModelQuotaExhausted(modelName);
         }
         console.warn(`Streaming failed with model ${modelName}:`, sErrMsg);

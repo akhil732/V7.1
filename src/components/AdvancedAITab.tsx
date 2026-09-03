@@ -906,7 +906,7 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
   );
 
   return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: 680, background: C.bg, color: C.text, overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif', borderRadius: 16, border: `1px solid ${C.border}`, boxShadow: `0 8px 24px ${C.shadow}` }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%', background: C.bg, color: C.text, overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif', borderRadius: 16, border: `1px solid ${C.border}`, boxShadow: `0 8px 24px ${C.shadow}` }}>
       <SessionHistoryPanel
         isOpen={historyOpen}
         sessions={sessions}
@@ -1042,16 +1042,18 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
       </main>
 
       {/* Input Bar */}
-      <InputBar
-        inputRef={inputRef}
-        value={input}
-        onChange={setInput}
-        onSend={() => handleSend()}
-        isLoading={isLoading}
-        isEmpty={messages.length === 0}
-        onSelectSuggestion={handleSend}
-        C={C}
-      />
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 30 }}>
+        <InputBar
+          inputRef={inputRef}
+          value={input}
+          onChange={setInput}
+          onSend={() => handleSend()}
+          isLoading={isLoading}
+          isEmpty={messages.length === 0}
+          onSelectSuggestion={handleSend}
+          C={C}
+        />
+      </div>
 
       {/* Ground Truth Inspector Drawer */}
       <GroundTruthInspectorDrawer

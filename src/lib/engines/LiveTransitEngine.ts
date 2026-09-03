@@ -78,6 +78,7 @@ export interface LiveTransitPosition {
   houseFromMoon: number;       // 1-12
   classification: 'Supportive' | 'Neutral' | 'Challenging';
   classicalResultTelugu: string;
+  isRetrograde?: boolean;
 }
 
 export interface LiveTransitSnapshot {
