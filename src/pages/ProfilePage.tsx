@@ -10,6 +10,8 @@ import { DriveSyncService } from '../lib/driveSyncService';
 import { generateVedicBirthChartMarkdown } from '../lib/vedicMarkdownGenerator';
 import { useAuth } from '../context/AuthContext';
 import { googleSignIn, googleSignOut } from '../lib/googleDrive';
+import { useLanguage } from '../context/LanguageContext';
+import { PROFILE_LABELS, Lang } from '../lib/i18n/astrologicalTerms';
 
 interface ProfilePageProps {
   savedProfiles: SavedPerson[];
@@ -19,8 +21,8 @@ interface ProfilePageProps {
   onEditProfile: (profile: SavedPerson) => void;
   onDeleteProfile: (id: string) => void;
   onNavigatePage: (page: 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam') => void;
-  language: 'en' | 'hi' | 'te';
-  onLanguageChange: (lang: 'en' | 'hi' | 'te') => void;
+  language?: 'en' | 'hi' | 'te';
+  onLanguageChange?: (lang: 'en' | 'hi' | 'te') => void;
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
@@ -35,6 +37,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onLanguageChange,
 }) => {
   const { user, isAuthenticated } = useAuth();
+  const { language: ctxLanguage, setLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const l = PROFILE_LABELS[activeLang] || PROFILE_LABELS.en;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<'All' | 'Male' | 'Female'>('All');
   
@@ -156,10 +162,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
             <div>
               <h2 className="font-serif font-bold text-lg text-ds-secondary">
-                {user?.displayName || 'Jyothishya Sanathanam User'}
+                {user?.displayName || l.userAccount}
               </h2>
               <p className="text-xs text-ds-on-surface-variant">
-                {user?.email || 'Local Offline Mode (Google Login Available)'}
+                {user?.email || l.offlineMode}
               </p>
             </div>
           </div>
@@ -171,7 +177,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-ds-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
+                <span>{l.signOut}</span>
               </button>
             ) : (
               <button
@@ -179,7 +185,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-ds-lg bg-ds-secondary hover:brightness-110 text-ds-on-secondary text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
               >
                 <User className="w-3.5 h-3.5 text-ds-tertiary" />
-                <span>Google Sign In</span>
+                <span>{l.googleSignIn}</span>
               </button>
             )}
           </div>
@@ -195,10 +201,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
             <div>
               <h3 className="font-serif font-bold text-base text-ds-secondary">
-                Google Drive Cloud Sync
+                {l.cloudSyncTitle}
               </h3>
               <p className="text-xs text-ds-on-surface-variant">
-                Centralized sync status for all saved birth charts & reports
+                {l.cloudSyncDesc}
               </p>
             </div>
           </div>
@@ -211,7 +217,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               title="Generate and save Markdown birth charts for all profiles in Google Drive folder 'Vedic Birth Charts'"
             >
               <FileText className="w-3.5 h-3.5 text-ds-primary" />
-              <span>Sync Vedic Charts (.md)</span>
+              <span>{l.syncVedicMd}</span>
             </button>
 
             <button
@@ -220,7 +226,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 bg-ds-primary hover:brightness-110 text-ds-on-primary rounded-ds-lg text-xs font-semibold transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-              <span>{syncing ? 'Syncing...' : 'Sync Profiles'}</span>
+              <span>{syncing ? l.syncing : l.syncProfiles}</span>
             </button>
           </div>
         </div>
@@ -236,11 +242,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             ) : syncStatus === 'synced' ? (
               <span className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-2 py-1 rounded-ds-md border border-emerald-200">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Connected & Up to Date ({savedProfiles.length} Charts Synced)</span>
+                <span>{l.connectedUpToDate(savedProfiles.length)}</span>
               </span>
             ) : (
               <span className="text-ds-on-surface-variant font-medium">
-                Connected to Google Drive · {savedProfiles.length} Charts Available
+                {l.connectedLocal(savedProfiles.length)}
               </span>
             )}
           </div>
@@ -258,12 +264,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="font-serif font-bold text-base text-ds-secondary flex items-center gap-2">
-              <span>Saved Birth Charts</span>
+              <span>{l.savedBirthProfiles}</span>
               <span className="bg-ds-primary/10 text-ds-primary text-xs font-bold px-2 py-0.5 rounded-full">
                 {savedProfiles.length}
               </span>
             </h3>
-            <p className="text-xs text-ds-on-surface-variant">Manage, view, edit, or delete saved chart profiles</p>
+            <p className="text-xs text-ds-on-surface-variant">{l.savedProfilesSubtitle}</p>
           </div>
 
           <button
@@ -271,7 +277,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             className="flex items-center justify-center gap-1.5 px-3 py-2 bg-ds-primary hover:brightness-110 text-ds-on-primary rounded-ds-lg text-xs font-semibold transition-colors shadow-2xs cursor-pointer self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Create New Chart</span>
+            <span>+ {l.newProfile}</span>
           </button>
         </div>
 
@@ -281,7 +287,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-ds-on-surface-variant" />
             <input
               type="text"
-              placeholder="Search by name or place..."
+              placeholder={l.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-ds-surface-container border border-ds-secondary/20 rounded-ds-lg text-ds-secondary focus:border-ds-primary focus:outline-none"
@@ -299,7 +305,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     : 'text-ds-on-surface-variant hover:bg-ds-surface'
                 }`}
               >
-                {g}
+                {g === 'All' ? l.all : g === 'Male' ? l.male : l.female}
               </button>
             ))}
           </div>
@@ -309,7 +315,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
           {filteredProfiles.length === 0 ? (
             <div className="text-center py-8 text-xs text-ds-on-surface-variant">
-              No saved birth charts match your query.
+              {l.noProfilesFound}
             </div>
           ) : (
             filteredProfiles.map((p) => {
@@ -363,7 +369,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       className="flex items-center gap-1 px-2.5 py-1 bg-ds-surface border border-ds-secondary/20 rounded-ds-md text-xs font-semibold text-ds-secondary hover:border-ds-primary cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5 text-ds-primary" />
-                      <span>View</span>
+                      <span>{l.view}</span>
                     </button>
 
                     <button
@@ -393,18 +399,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       <div className="bg-ds-surface border border-ds-secondary/15 rounded-ds-xl p-4 sm:p-5 shadow-ds-sm space-y-4">
         <h3 className="font-serif font-bold text-base text-ds-secondary border-b border-ds-secondary/10 pb-2 flex items-center gap-2">
           <Settings className="w-4 h-4 text-ds-primary" />
-          <span>App Preferences</span>
+          <span>{l.appPreferences}</span>
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Language Preference */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-ds-on-surface-variant uppercase tracking-wider block">
-              Default Language
+              {l.defaultLanguage}
             </label>
             <select
-              value={language}
-              onChange={(e) => onLanguageChange(e.target.value as any)}
+              value={activeLang}
+              onChange={(e) => {
+                const nextLang = e.target.value as 'en' | 'hi' | 'te';
+                setLanguage(nextLang);
+                if (onLanguageChange) onLanguageChange(nextLang);
+              }}
               className="w-full text-xs bg-ds-surface-container border border-ds-secondary/20 rounded-ds-lg p-2 font-semibold text-ds-secondary focus:border-ds-primary"
             >
               <option value="en">English (EN)</option>
@@ -416,7 +426,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           {/* Chart Style Preference */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-ds-on-surface-variant uppercase tracking-wider block">
-              Default Chart Style
+              {l.defaultChartStyle}
             </label>
             <select
               value={defaultChartStyle}
@@ -456,7 +466,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             className="flex items-center gap-2 px-4 py-2 bg-ds-surface-container hover:bg-ds-surface border border-ds-secondary/20 text-ds-secondary text-xs font-semibold rounded-ds-lg transition-colors cursor-pointer"
           >
             <Download className="w-4 h-4 text-ds-primary" />
-            <span>Export All My Data (JSON)</span>
+            <span>{l.exportBackup}</span>
           </button>
 
           <button
@@ -471,7 +481,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold rounded-ds-lg transition-colors cursor-pointer ml-auto"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Reset / Clear Local Data</span>
+            <span>{l.resetData}</span>
           </button>
         </div>
 

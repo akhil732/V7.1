@@ -2,6 +2,7 @@ import React from 'react';
 import { AdvancedAITab } from '../components/AdvancedAITab';
 import { BirthDetails } from '../types';
 import { SavedPerson } from '../types/marriageMatch';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AIConsultationPageProps {
   activeProfile: SavedPerson | null;
@@ -14,10 +15,13 @@ interface AIConsultationPageProps {
 export const AIConsultationPage: React.FC<AIConsultationPageProps> = ({
   activeProfile,
   horoscopeReport,
-  language = 'en',
+  language,
   savedProfiles = [],
   onSelectProfile,
 }) => {
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = language || ctxLanguage || 'en';
+
   const birthDetails: BirthDetails = activeProfile ? {
     name: activeProfile.name,
     gender: activeProfile.gender || 'Male',
@@ -45,7 +49,7 @@ export const AIConsultationPage: React.FC<AIConsultationPageProps> = ({
       <AdvancedAITab
         birthDetails={birthDetails}
         horoscopeData={horoscopeReport}
-        language={language}
+        language={activeLang}
         profiles={savedProfiles}
         onSelectProfile={onSelectProfile}
       />

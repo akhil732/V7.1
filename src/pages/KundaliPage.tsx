@@ -3,6 +3,8 @@ import { BirthForm } from '../components/BirthForm';
 import { BirthDetails } from '../types';
 import { SavedPerson } from '../types/marriageMatch';
 import { ArrowLeft, User, MoreVertical, Trash2, Check, Sparkles } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { KUNDALI_LABELS, Lang } from '../lib/i18n/astrologicalTerms';
 
 interface KundaliPageProps {
   savedProfiles: SavedPerson[];
@@ -22,9 +24,13 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
   onSelectSavedProfile,
   onDeleteProfile,
   onBack,
-  language = 'en',
+  language,
   loading = false,
 }) => {
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const l = KUNDALI_LABELS[activeLang] || KUNDALI_LABELS.en;
+
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const formatDateDisplay = (dateStr: string) => {
@@ -47,11 +53,11 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
           <BirthForm
             onSubmit={onGenerateNewKundali}
             loading={loading}
-            language={language}
+            language={activeLang}
             embedded={true}
-            title="New Kundali"
-            subtitle="Enter birth details for precise calculation."
-            submitButtonText="Generate"
+            title={l.newKundali}
+            subtitle={l.enterBirthDetails}
+            submitButtonText={l.generate}
           />
         </section>
 
@@ -59,10 +65,10 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-serif text-xl sm:text-2xl font-semibold text-[#071E27] tracking-tight">
-              Saved Profiles
+              {l.savedProfiles}
             </h3>
             <span className="text-xs text-[#767683] font-medium">
-              {savedProfiles.length} {savedProfiles.length === 1 ? 'Profile' : 'Profiles'}
+              {savedProfiles.length} {savedProfiles.length === 1 ? l.profileSingular : l.profilePlural}
             </span>
           </div>
 
@@ -95,7 +101,7 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
                         </h4>
                         {isCurrent && (
                           <span className="text-[10px] uppercase font-bold bg-[#E67E22]/15 text-[#E67E22] px-1.5 py-0.5 rounded-full shrink-0">
-                            Active
+                            {l.active}
                           </span>
                         )}
                       </div>
@@ -105,7 +111,7 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
                           {profile.gender === 'Female' ? '♀' : '♂'} {formatDateDisplay(profile.date)}
                         </span>
                         <span>•</span>
-                        <span className="truncate">{profile.place || 'Unknown'}</span>
+                        <span className="truncate">{profile.place || l.unknownPlace}</span>
                       </p>
                     </div>
                   </div>
@@ -117,7 +123,7 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
                       className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#E67E22]/10 hover:bg-[#E67E22] text-[#E67E22] hover:text-white text-xs font-semibold transition-colors cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>View Chart</span>
+                      <span>{l.viewChart}</span>
                     </button>
 
                     {onDeleteProfile && profile.id !== 'satyam-family-10' && (
@@ -140,7 +146,7 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
                               className="w-full px-3 py-2 text-left text-xs text-[#BA1A1A] hover:bg-[#FFDAD6]/30 flex items-center gap-2 cursor-pointer font-medium"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete Profile</span>
+                              <span>{l.deleteProfile}</span>
                             </button>
                           </div>
                         )}
@@ -153,7 +159,7 @@ export const KundaliPage: React.FC<KundaliPageProps> = ({
 
             {savedProfiles.length === 0 && (
               <div className="bg-white p-8 rounded-xl border border-[#D4C5B9]/30 border-dashed text-center">
-                <p className="text-sm text-[#767683]">No saved Kundalis yet. Fill in the form above to generate your first chart.</p>
+                <p className="text-sm text-[#767683]">{l.noSavedKundalis}</p>
               </div>
             )}
           </div>

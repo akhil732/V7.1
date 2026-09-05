@@ -1,5 +1,7 @@
 import React from 'react';
 import { Home, LayoutGrid, Heart, Music } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
+import { BOTTOM_NAV_LABELS, Lang } from '../../lib/i18n/astrologicalTerms';
 
 export type ActivePage = 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'chant' | 'login';
 
@@ -9,15 +11,19 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activePage, onNavigatePage }) => {
+  const { language } = useLanguage();
+  const langKey = (language as Lang) || 'en';
+  const labels = BOTTOM_NAV_LABELS[langKey] || BOTTOM_NAV_LABELS.en;
+
   const navItems: Array<{
     id: ActivePage;
     label: string;
     icon: React.FC<{ className?: string }>;
   }> = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'kundali', label: 'Kundali', icon: LayoutGrid },
-    { id: 'chant', label: 'Chant', icon: Music },
-    { id: 'marriage-match', label: 'Matching', icon: Heart },
+    { id: 'home', label: labels.home, icon: Home },
+    { id: 'kundali', label: labels.kundali, icon: LayoutGrid },
+    { id: 'chant', label: labels.chant, icon: Music },
+    { id: 'marriage-match', label: labels.matching, icon: Heart },
   ];
 
   return (

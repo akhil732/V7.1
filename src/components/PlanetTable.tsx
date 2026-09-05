@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { SIGN_MAP, PLANETS_SHORT } from './DivisionalChart';
 import { Search, Sparkles, SlidersHorizontal, Eye } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { PLANET_TABLE_LABELS, Lang } from '../lib/i18n/astrologicalTerms';
 
 const GRAHA_DETAILS: Record<string, { sanskrit: string; color: string; marriageRole: string }> = {
   "Ascendant": { sanskrit: "Lagna", color: "#F5A623", marriageRole: "Physical Vitality, Temperament & Self-Identity" },
@@ -34,6 +36,10 @@ interface PlanetTableProps {
 }
 
 export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, language = 'en' }) => {
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const labels = PLANET_TABLE_LABELS[activeLang] || PLANET_TABLE_LABELS.en;
+
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -61,10 +67,10 @@ export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, languag
         <div>
           <h3 className="text-base sm:text-lg font-serif font-bold text-ds-on-surface tracking-wide uppercase flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-ds-primary" />
-            <span>Planetary Coordinates & Insights</span>
+            <span>{labels.title}</span>
           </h3>
           <p className="text-xs text-ds-on-surface-variant mt-0.5 font-medium">
-            Key relationship significators and precise celestial placements
+            {labels.subtitle}
           </p>
         </div>
 
@@ -80,7 +86,7 @@ export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, languag
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>Insight Cards</span>
+              <span>{labels.insightCards}</span>
             </button>
             <button
               type="button"
@@ -92,7 +98,7 @@ export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, languag
               }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Detailed Table</span>
+              <span>{labels.detailedTable}</span>
             </button>
           </div>
         </div>
@@ -121,27 +127,27 @@ export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, languag
 
                   {isRetro && (
                     <span className="text-[9px] bg-ds-error-crimson/10 text-ds-error-crimson border border-ds-error-crimson/20 px-2 py-0.5 rounded-full font-mono font-bold">
-                      Retrograde (Rx)
+                      {labels.retrograde}
                     </span>
                   )}
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-ds-on-surface-variant font-medium">Placement:</span>
+                  <span className="text-ds-on-surface-variant font-medium">{labels.placement}:</span>
                   <span className="font-bold text-ds-primary font-mono">
                     {rasiData ? `${rasiData.longitude.toFixed(2)}° in ${rasiData.sign}` : 'N/A'}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-ds-on-surface-variant font-medium">Nakshatra:</span>
+                  <span className="text-ds-on-surface-variant font-medium">{labels.nakshatra}:</span>
                   <span className="font-bold text-ds-success-green">
                     {naksData ? `${naksData.nakshatra} (Pada ${naksData.pada})` : 'N/A'}
                   </span>
                 </div>
 
                 <div className="bg-ds-surface-variant/40 p-2.5 rounded-ds-lg border border-ds-outline text-[11px] text-ds-on-surface-variant leading-relaxed">
-                  <strong className="text-ds-on-surface">Marital Impact:</strong> {details.marriageRole}
+                  <strong className="text-ds-on-surface">{labels.maritalImpact}:</strong> {details.marriageRole}
                 </div>
               </div>
             );
@@ -155,7 +161,7 @@ export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, languag
           <div className="relative max-w-sm">
             <input
               type="text"
-              placeholder="Filter planets or signs..."
+              placeholder={labels.filterPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-ds-surface border border-ds-outline rounded-ds-xl pl-9 pr-4 py-2 text-xs text-ds-on-surface focus:outline-none focus:border-ds-primary font-mono placeholder-ds-on-surface-variant/50 focus-ring"
@@ -167,10 +173,10 @@ export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, languag
             <table className="w-full text-left text-xs text-ds-on-surface">
               <thead className="bg-ds-surface-variant/30 text-[10px] uppercase font-mono font-bold text-ds-on-surface-variant">
                 <tr>
-                  <th className="py-3 px-4 border-b border-ds-outline">Graha (Planet)</th>
-                  <th className="py-3 px-4 border-b border-ds-outline">Sign & Degrees</th>
-                  <th className="py-3 px-4 border-b border-ds-outline">Nakshatra & Pada</th>
-                  <th className="py-3 px-4 border-b border-ds-outline text-right">Nakshatra Lord</th>
+                  <th className="py-3 px-4 border-b border-ds-outline">{labels.grahaPlanet}</th>
+                  <th className="py-3 px-4 border-b border-ds-outline">{labels.signDegrees}</th>
+                  <th className="py-3 px-4 border-b border-ds-outline">{labels.nakshatraPada}</th>
+                  <th className="py-3 px-4 border-b border-ds-outline text-right">{labels.nakshatraLord}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ds-outline/50 bg-ds-surface">
@@ -211,8 +217,8 @@ export const PlanetTable: React.FC<PlanetTableProps> = ({ horoscopeData, languag
       )}
 
       <div className="border-t border-ds-outline pt-3 text-[10px] text-ds-on-surface-variant flex items-center justify-between font-mono font-bold">
-        <span>Ayanamsa: {horoscopeData?.horoscope?.ayanamsa_value?.toFixed(6) || '24.12'}°</span>
-        <span>Julian Day: {horoscopeData?.horoscope?.julian_day || 'N/A'}</span>
+        <span>{labels.ayanamsa}: {horoscopeData?.horoscope?.ayanamsa_value?.toFixed(6) || '24.12'}°</span>
+        <span>{labels.julianDay}: {horoscopeData?.horoscope?.julian_day || 'N/A'}</span>
       </div>
     </div>
   );

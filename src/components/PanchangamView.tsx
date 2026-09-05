@@ -1,45 +1,51 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import { PANCHANGAM_LABELS, Lang } from '../lib/i18n/astrologicalTerms';
 
 interface PanchangamViewProps {
   calendarInfo: any;
 }
 
 export const PanchangamView: React.FC<PanchangamViewProps> = ({ calendarInfo }) => {
+  const { language } = useLanguage();
+  const langKey = (language as Lang) || 'en';
+  const labels = PANCHANGAM_LABELS[langKey] || PANCHANGAM_LABELS.en;
+
   if (!calendarInfo) return null;
 
   const items = [
     {
-      label: 'Tithi',
+      label: labels.tithi,
       value: calendarInfo.Tithi || 'Not Found',
       icon: '🌙'
     },
     {
-      label: 'Janma Rasi',
+      label: labels.janma_rasi,
       value: calendarInfo.Raasi || 'Not Found',
       icon: '🦁'
     },
     {
-      label: 'Nakshatram',
+      label: labels.nakshatram,
       value: calendarInfo.Nakshatram || 'Not Found',
       icon: '✨'
     },
     {
-      label: 'Nitya Yoga',
+      label: labels.nitya_yoga,
       value: calendarInfo.Yoga || 'Not Found',
       icon: '🧘'
     },
     {
-      label: 'Karana',
+      label: labels.karana,
       value: calendarInfo.Karana || 'Not Found',
       icon: '🐚'
     },
     {
-      label: 'Sun Rise',
+      label: labels.sun_rise,
       value: calendarInfo['Sun Rise'] || 'Not Found',
       icon: '🌅'
     },
     {
-      label: 'Sun Set',
+      label: labels.sun_set,
       value: calendarInfo['Sun Set'] || 'Not Found',
       icon: '🌇'
     }
@@ -49,7 +55,7 @@ export const PanchangamView: React.FC<PanchangamViewProps> = ({ calendarInfo }) 
     <div className="rounded-ds-xl border border-ds-secondary/15 bg-ds-surface p-5 lg:p-6 space-y-4 shadow-ds-sm">
       <div className="flex items-center gap-2">
         <span className="text-sm">📅</span>
-        <h3 className="text-xs uppercase tracking-[0.2em] text-ds-secondary font-bold">Panchangam (Vedic Calendar Details)</h3>
+        <h3 className="text-xs uppercase tracking-[0.2em] text-ds-secondary font-bold">{labels.header}</h3>
       </div>
 
       {/* Grid of 5-7 equal-width columns, wrapping on smaller viewports */}
@@ -71,7 +77,7 @@ export const PanchangamView: React.FC<PanchangamViewProps> = ({ calendarInfo }) 
               </p>
             </div>
             <div className="mt-2 text-[9px] text-ds-on-surface-variant/60 font-mono font-bold">
-              Local Astro Details
+              {labels.local}
             </div>
           </div>
         ))}

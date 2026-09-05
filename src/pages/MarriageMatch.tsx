@@ -28,6 +28,8 @@ import { PersonFormData, MarriageMatchResult, ChartStyle, SavedPerson } from '..
 import { safeSetLocalStorageItem } from '../lib/storageUtils';
 import { Button } from '../components/design-system/Button';
 import { ProfileStorageService } from '../lib/profileStorageService';
+import { useLanguage } from '../context/LanguageContext';
+import { MARRIAGE_MATCH_LABELS, Lang } from '../lib/i18n/astrologicalTerms';
 
 const defaultFormData: PersonFormData = {
   name: '',
@@ -40,105 +42,6 @@ const defaultFormData: PersonFormData = {
   timezone: 0,
 };
 
-const labels = {
-  en: {
-    title: "Compatibility Check",
-    subtitle: "Enter details below or select from your saved Kundalis to perform a comprehensive Ashtakoota and Dasakoota matching analysis.",
-    tabBoy: "Boy's Details",
-    tabGirl: "Girl's Details",
-    checkBtn: "Check Compatibility",
-    checking: "Calculating Astrological Alignment...",
-    boyDetails: "Groom's Profile",
-    girlDetails: "Bride's Profile",
-    retry: "Retry Calculation",
-    errorTitle: "Calculation Notice",
-    boyChartTitle: "Groom's Lagna Chart (D-1)",
-    girlChartTitle: "Bride's Lagna Chart (D-1)",
-    editForms: "Modify Input Data",
-    tabRules: "Compatibility Rules",
-    tabCharts: "Birth Charts (D-1)",
-    tabKuta: "Ashta Kuta Breakdown",
-    tabDoshas: "Doshas & Remedies",
-    savedProfiles: "Saved Profiles",
-    searchPlaceholder: "Search saved profiles...",
-    setAsBoy: "Set as Boy",
-    setAsGirl: "Set as Girl",
-    activeLabel: "Active",
-    noMaleProfiles: "No saved male profiles found.",
-    noFemaleProfiles: "No saved female profiles found.",
-    maleListSubtitle: "Saved Male Kundalis",
-    femaleListSubtitle: "Saved Female Kundalis",
-    boyFilled: "Boy profile set",
-    girlFilled: "Girl profile set",
-    fillNextGirl: "Next: Enter Girl's Details →",
-    readyToMatch: "Both profiles are ready for compatibility analysis"
-  },
-  hi: {
-    title: "विवाह अनुकूलता मिलान",
-    subtitle: "अष्टकूट और दशाकूट मिलान विश्लेषण के लिए विवरण दर्ज करें या सहेजी गई कुंडलियों में से चुनें।",
-    tabBoy: "वर का विवरण",
-    tabGirl: "वधू का विवरण",
-    checkBtn: "अनुकूलता की जांच करें",
-    checking: "ज्योतिषीय संरेखण की गणना हो रही है...",
-    boyDetails: "वर प्रोफ़ाइल",
-    girlDetails: "वधू प्रोफ़ाइल",
-    retry: "पुनः प्रयास करें",
-    errorTitle: "गणना सूचना",
-    boyChartTitle: "वर लग्न कुंडली (D-1)",
-    girlChartTitle: "वधू लग्न कुंडली (D-1)",
-    editForms: "विवरण संपादित करें",
-    tabRules: "अनुकूलता नियम",
-    tabCharts: "जन्म कुंडली (D-1)",
-    tabKuta: "अष्टकूट ब्रेकडाउन",
-    tabDoshas: "दोष और उपचार",
-    savedProfiles: "सहेजे गए प्रोफाइल",
-    searchPlaceholder: "प्रोफ़ाइल खोजें...",
-    setAsBoy: "वर के रूप में चुनें",
-    setAsGirl: "वधू के रूप में चुनें",
-    activeLabel: "सक्रिय",
-    noMaleProfiles: "कोई सहेजी गई पुरुष प्रोफाइल नहीं मिली।",
-    noFemaleProfiles: "कोई सहेजी गई महिला प्रोफाइल नहीं मिली।",
-    maleListSubtitle: "सहेजी गई पुरुष कुंडलियां",
-    femaleListSubtitle: "सहेजी गई महिला कुंडलियां",
-    boyFilled: "वर प्रोफ़ाइल सेट है",
-    girlFilled: "वधू प्रोफ़ाइल सेट है",
-    fillNextGirl: "आगे: वधू का विवरण दर्ज करें →",
-    readyToMatch: "दोनों प्रोफाइल मिलान के लिए तैयार हैं"
-  },
-  te: {
-    title: "వివాహ పొంతన విశ్లేషణ",
-    subtitle: "అష్టకూట మరియు దశకూట జాతక పొంతన విశ్లేషణ కోసం వివరాలు నమోదు చేయండి లేదా సేవ్ చేసిన ప్రొఫైల్స్ నుండి ఎంచుకోండి.",
-    tabBoy: "వరుడి వివరాలు",
-    tabGirl: "వధువు వివరాలు",
-    checkBtn: "వివాహ అనుకూలతను తనిఖీ చేయండి",
-    checking: "జాతక పొంతన తనిఖీ చేస్తున్నాము...",
-    boyDetails: "వరుడి ప్రొఫైల్",
-    girlDetails: "వధువు ప్రొఫైల్",
-    retry: "మళ్లీ ప్రయత్నించండి",
-    errorTitle: "లోపం సమాచారం",
-    boyChartTitle: "వరుడి లగ్న కుండలి (D-1)",
-    girlChartTitle: "వధువు లగ్న కుండలి (D-1)",
-    editForms: "వివరాలను సవరించండి",
-    tabRules: "అనుకూలత సూత్రాలు",
-    tabCharts: "జాతక చక్రాలు (D-1)",
-    tabKuta: "అష్టకూట విశ్లేషణ",
-    tabDoshas: "దోషాలు & పరిహారాలు",
-    savedProfiles: "సేవ్ చేసిన ప్రొఫైల్స్",
-    searchPlaceholder: "ప్రొఫైల్స్ వెతకండి...",
-    setAsBoy: "వరుడిగా ఎంచుకోండి",
-    setAsGirl: "వధువుగా ఎంచుకోండి",
-    activeLabel: "ఎంచుకోబడింది",
-    noMaleProfiles: "సేవ్ చేసిన పురుషుల ప్రొఫైల్స్ లేవు.",
-    noFemaleProfiles: "సేవ్ చేసిన మహిళల ప్రొఫైల్స్ లేవు.",
-    maleListSubtitle: "సేవ్ చేసిన పురుషుల జాతకాలు",
-    femaleListSubtitle: "సేవ్ చేసిన మహిళల జాతకాలు",
-    boyFilled: "వరుడి వివరాలు పూర్తయ్యాయి",
-    girlFilled: "వధువు వివరాలు పూర్తయ్యాయి",
-    fillNextGirl: "తరువాత: వధువు వివరాలు నమోదు చేయండి →",
-    readyToMatch: "రెండు ప్రొఫైల్స్ పొంతన విశ్లేషణకు సిద్ధంగా ఉన్నాయి"
-  }
-};
-
 interface MarriageMatchProps {
   language?: 'en' | 'hi' | 'te';
   savedProfiles?: SavedPerson[];
@@ -147,12 +50,14 @@ interface MarriageMatchProps {
 }
 
 export const MarriageMatch: React.FC<MarriageMatchProps> = ({ 
-  language = 'en',
+  language,
   savedProfiles: propSavedProfiles,
   onBack,
   onNavigatePage
 }) => {
-  const l = labels[language] || labels.en;
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const l = MARRIAGE_MATCH_LABELS[activeLang] || MARRIAGE_MATCH_LABELS.en;
 
   // Active form tab: 'boy' (Groom) | 'girl' (Bride)
   const [activeFormTab, setActiveFormTab] = useState<'boy' | 'girl'>('boy');

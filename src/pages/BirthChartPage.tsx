@@ -25,6 +25,16 @@ import { calculateActiveDasha } from '../lib/engines/DashaEngine';
 import { generateSanathanamSnapshot } from '../lib/services/SanathanamReportService';
 import { useKPChart } from '../hooks/useKPChart';
 import { computeLiveTransitSnapshot } from '../lib/engines/LiveTransitEngine';
+import { useLanguage } from '../context/LanguageContext';
+import { 
+  BIRTH_CHART_TAB_LABELS, 
+  Lang, 
+  translateSign, 
+  translatePlanet, 
+  translateLord, 
+  translateNakshatra, 
+  formatRemainingTimeInLanguage 
+} from '../lib/i18n/astrologicalTerms';
 
 export type BirthChartTab = 'overview' | 'd1' | 'transit' | 'dasha' | 'partner' | 'report' | 'ai';
 
@@ -109,6 +119,10 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
   onBack,
   onRetry
 }) => {
+  const { language: ctxLanguage, t } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const labels = BIRTH_CHART_TAB_LABELS[activeLang] || BIRTH_CHART_TAB_LABELS.en;
+
   const [activeTab, setActiveTab] = useState<BirthChartTab>(initialTab);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [storyOfChart, setStoryOfChart] = useState<string>(
@@ -203,18 +217,18 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
         <div className="w-16 h-16 rounded-2xl bg-[#FFDAD6] text-[#BA1A1A] flex items-center justify-center mx-auto text-2xl font-bold">
           !
         </div>
-        <h2 className="font-serif font-bold text-xl text-[#BA1A1A]">Generation Failed</h2>
+        <h2 className="font-serif font-bold text-xl text-[#BA1A1A]">{labels.generationFailed}</h2>
         <p className="text-sm text-[#8A7B6E]">
           {reportError}
         </p>
         <div className="flex items-center justify-center gap-3 pt-2">
           {onRetry && (
             <Button variant="secondary" onClick={onRetry}>
-              Retry Calculation
+              {labels.retryCalc}
             </Button>
           )}
           <Button variant="primary" onClick={onEditProfile || onBack}>
-            {onEditProfile ? 'Edit Details' : 'Go Back'}
+            {onEditProfile ? labels.editDetails : labels.goBack}
           </Button>
         </div>
       </div>
@@ -227,9 +241,9 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
         <div className="animate-spin w-16 h-16 rounded-2xl bg-[#FFDDB3] text-[#E67E22] flex items-center justify-center mx-auto text-2xl font-bold">
           🕉
         </div>
-        <h2 className="font-serif font-bold text-xl text-[#2C3E50]">Generating Birth Chart...</h2>
+        <h2 className="font-serif font-bold text-xl text-[#2C3E50]">{labels.generatingChart}</h2>
         <p className="text-sm text-[#8A7B6E]">
-          Calculating precise Parashari divisional coordinates, Vimshottari dasha cycles, and planetary dignities.
+          {t('calculating_divisional')}
         </p>
       </div>
     );
@@ -241,9 +255,9 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
         <div className="w-16 h-16 rounded-2xl bg-[#FFDDB3] text-[#E67E22] flex items-center justify-center mx-auto text-2xl font-bold">
           🕉
         </div>
-        <h2 className="font-serif font-bold text-xl text-[#2C3E50]">No Active Chart Selected</h2>
+        <h2 className="font-serif font-bold text-xl text-[#2C3E50]">{labels.noActiveChart}</h2>
         <p className="text-sm text-[#8A7B6E]">
-          Please select or create a profile on the Home or Profile page to view the Birth Chart.
+          {labels.selectOrCreate}
         </p>
       </div>
     );
@@ -276,6 +290,16 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
   const activeAd = activeDasha?.antardasha?.lord || 'Sun';
   const activePd = activeDasha?.pratyantardasha?.lord || 'Venus';
 
+  // Translated entities for display
+  const lagnaSignTr = translateSign(lagnaSign, activeLang);
+  const lagnaLordTr = translateLord(lagnaLord, activeLang);
+  const moonSignTr = translateSign(moonSign, activeLang);
+  const nakshatraTextTr = translateNakshatra(nakshatraText, activeLang);
+  const sunSignTr = translateSign(sunSign, activeLang);
+  const activeMdTr = translatePlanet(activeMd, activeLang);
+  const activeAdTr = translatePlanet(activeAd, activeLang);
+  const activePdTr = translatePlanet(activePd, activeLang);
+
   // Avakhada Chakra Data
   const avakhada = horoscopeReport?.avakhadaChakra || {
     Varna: 'Kshatriya',
@@ -290,13 +314,13 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
   };
 
   const tabs: { key: BirthChartTab; label: string; icon: React.ReactNode }[] = [
-    { key: 'overview', label: 'Overview', icon: <Compass className="w-4 h-4" /> },
-    { key: 'd1', label: 'Planet Strength', icon: <Shield className="w-4 h-4" /> },
-    { key: 'transit', label: 'Transit', icon: <Orbit className="w-4 h-4" /> },
-    { key: 'dasha', label: 'Vimsottara Dasha', icon: <Clock className="w-4 h-4" /> },
-    { key: 'partner', label: language === 'en' ? 'Life Partner' : (language === 'hi' ? 'जीवन साथी' : 'జీవన సహచర'), icon: <Heart className="w-4 h-4" /> },
-    { key: 'report', label: 'Report', icon: <BookOpen className="w-4 h-4" /> },
-    { key: 'ai', label: 'AI', icon: <MessageSquare className="w-4 h-4" /> }
+    { key: 'overview', label: labels.overview, icon: <Compass className="w-4 h-4" /> },
+    { key: 'd1', label: labels.planetStrength, icon: <Shield className="w-4 h-4" /> },
+    { key: 'transit', label: labels.transit, icon: <Orbit className="w-4 h-4" /> },
+    { key: 'dasha', label: labels.dasha, icon: <Clock className="w-4 h-4" /> },
+    { key: 'partner', label: labels.partner, icon: <Heart className="w-4 h-4" /> },
+    { key: 'report', label: labels.report, icon: <BookOpen className="w-4 h-4" /> },
+    { key: 'ai', label: labels.ai, icon: <MessageSquare className="w-4 h-4" /> }
   ];
 
   return (
@@ -307,7 +331,7 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
           {/* Left: Native Name & Gender */}
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#2E7D32] animate-pulse shrink-0" />
-            <span className="text-[#8A7B6E] font-medium text-xs">Native:</span>
+            <span className="text-[#8A7B6E] font-medium text-xs">{labels.native}:</span>
             <strong className="font-serif text-[#2C3E50] font-bold text-sm sm:text-base">{name}</strong>
             <span className="text-[#8A7B6E] text-xs font-medium">({birthDetails.gender})</span>
           </div>
@@ -370,11 +394,11 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
         <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs text-[#564337]">
           <div className="flex items-center gap-4 flex-wrap">
             <div>
-              <span className="text-[#8A7B6E]">Born:</span>{' '}
+              <span className="text-[#8A7B6E]">{labels.born}:</span>{' '}
               <strong className="font-mono font-bold text-[#2C3E50]">{date} @ {time}</strong>
             </div>
             <div>
-              <span className="text-[#8A7B6E]">Place:</span>{' '}
+              <span className="text-[#8A7B6E]">{labels.place}:</span>{' '}
               <strong className="font-semibold text-[#2C3E50]">{place}</strong>
             </div>
           </div>
@@ -420,39 +444,39 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
               <div className="flex items-center justify-between border-b border-[#D4C5B9]/30 pb-3">
                 <h3 className="font-serif font-bold text-base sm:text-lg text-[#2C3E50] flex items-center gap-2">
                   <Compass className="w-5 h-5 text-[#E67E22]" />
-                  <span>Executive Natal Coordinates</span>
+                  <span>{labels.execNatal}</span>
                 </h3>
-                <span className="text-xs text-[#8A7B6E] font-mono font-bold">Parashari Classical Core</span>
+                <span className="text-xs text-[#8A7B6E] font-mono font-bold">{labels.parashari}</span>
               </div>
 
               {/* 4 Pillars Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#FDFBF7] border border-[#D4C5B9]/40">
-                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">Ascendant (Lagna)</span>
-                  <span className="font-serif font-bold text-sm text-[#E67E22] mt-1 block">{lagnaSign}</span>
-                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">Lord: {lagnaLord}</span>
+                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">{labels.ascendantLagna}</span>
+                  <span className="font-serif font-bold text-sm text-[#E67E22] mt-1 block">{lagnaSignTr}</span>
+                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">{labels.lordLabel || 'Lord:'} {lagnaLordTr}</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#FDFBF7] border border-[#D4C5B9]/40">
-                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">Moon Sign (Rasi)</span>
-                  <span className="font-serif font-bold text-sm text-[#2C3E50] mt-1 block">{moonSign}</span>
-                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">{nakshatraText}</span>
+                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">{labels.moonSignRasi}</span>
+                  <span className="font-serif font-bold text-sm text-[#2C3E50] mt-1 block">{moonSignTr}</span>
+                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">{nakshatraTextTr}</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#FDFBF7] border border-[#D4C5B9]/40">
-                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">Sun Sign (Surya)</span>
-                  <span className="font-serif font-bold text-sm text-[#E67E22] mt-1 block">{sunSign}</span>
-                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">Soul Identity</span>
+                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">{labels.sunSignSurya}</span>
+                  <span className="font-serif font-bold text-sm text-[#E67E22] mt-1 block">{sunSignTr}</span>
+                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">{labels.soulIdentity}</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#FDFBF7] border border-[#D4C5B9]/40">
-                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">Active Dasha</span>
-                  <span className="font-serif font-bold text-sm text-[#BA1A1A] mt-1 block">{activeMd} MD</span>
-                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">{activeAd} AD • {activePd} PD</span>
+                  <span className="text-[11px] text-[#8A7B6E] font-bold uppercase tracking-wider block">{labels.activeDasha}</span>
+                  <span className="font-serif font-bold text-sm text-[#BA1A1A] mt-1 block">{activeMdTr} {labels.mahadasha || 'MD'}</span>
+                  <span className="text-[10px] text-[#564337] mt-0.5 block font-medium">{activeAdTr} {labels.antardasha || 'AD'} • {activePdTr} {labels.pratyantardasha || 'PD'}</span>
                 </div>
               </div>
 
               <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EADCCF]/80 space-y-1.5 pt-3">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-[#E67E22] uppercase tracking-wider">
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span>The Story of This Chart</span>
+                  <span>{labels.storyOfChart}</span>
                 </div>
                 <p className="text-xs sm:text-sm text-[#2C3E50] leading-relaxed font-serif italic">
                   "{storyOfChart}"
@@ -465,27 +489,27 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
               <div className="flex items-center justify-between border-b border-[#D4C5B9]/30 pb-3">
                 <h3 className="font-serif font-bold text-base text-[#2C3E50] flex items-center gap-2">
                   <Clock className="w-4 h-4 text-[#E67E22]" />
-                  <span>Current Vimshottari Life Phase</span>
+                  <span>{labels.currentPhase}</span>
                 </h3>
                 <button
                   onClick={() => setActiveTab('dasha')}
                   className="text-xs font-bold text-[#E67E22] hover:underline cursor-pointer"
                 >
-                  View Full Dasha →
+                  {labels.viewFullDasha} →
                 </button>
               </div>
 
               <div className="p-4 bg-[#FFF8EE] rounded-xl border border-[#E67E22]/30 space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs sm:text-sm font-semibold gap-2">
                   <span className="text-[#2C3E50] font-serif font-bold text-base">
-                    {activeMd} Mahadasha → {activeAd} Antardasha {activePd !== 'Unknown' ? `→ ${activePd} Pratyantardasha` : ''}
+                    {activeMdTr} {labels.mahadasha || 'Mahadasha'} → {activeAdTr} {labels.antardasha || 'Antardasha'} {activePd !== 'Unknown' ? `→ ${activePdTr} ${labels.pratyantardasha || 'Pratyantardasha'}` : ''}
                   </span>
                   <span className="text-[#E67E22] font-mono flex items-center gap-1.5 font-bold">
                     <span className="bg-white px-2 py-0.5 rounded-md border border-[#E67E22]/20">
-                      {activeDasha?.antardasha?.endDate ? formatRemainingTime(new Date(activeDasha.antardasha.endDate)) : '—'}
+                      {activeDasha?.antardasha?.endDate ? formatRemainingTimeInLanguage(new Date(activeDasha.antardasha.endDate), activeLang) : '—'}
                     </span>
                     <span className="text-[11px] text-[#8A7B6E]">
-                      (Ends {activeDasha?.antardasha?.endDate ? new Date(activeDasha.antardasha.endDate).toLocaleDateString() : '—'})
+                      ({labels.ends || 'Ends'} {activeDasha?.antardasha?.endDate ? new Date(activeDasha.antardasha.endDate).toLocaleDateString(activeLang === 'te' ? 'te-IN' : activeLang === 'hi' ? 'hi-IN' : 'en-GB') : '—'})
                     </span>
                   </span>
                 </div>
@@ -509,7 +533,7 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
               <div className="flex items-center justify-between border-b border-[#D4C5B9]/30 pb-2">
                 <h3 className="font-serif font-bold text-base sm:text-lg text-[#2C3E50] flex items-center gap-2">
                   <LayoutGrid className="w-4 h-4 text-[#E67E22]" />
-                  <span>Triple Charts (D1 Rasi, Live Transit & D9 Navamsha)</span>
+                  <span>{labels.tripleCharts}</span>
                 </h3>
               </div>
               {kpChart ? (
@@ -517,10 +541,11 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
                   kpChart={kpChart}
                   horoscopeData={horoscopeReport}
                   transitSnapshot={transitSnapshot}
+                  language={activeLang}
                 />
               ) : (
                 <div className="p-8 text-center text-sm text-[#8A7B6E] bg-white rounded-2xl border border-[#D4C5B9]/40">
-                  Loading Triple Charts...
+                  {labels.loadingTriple}
                 </div>
               )}
             </div>
@@ -546,8 +571,7 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
               chartType="Transit"
               horoscopeData={horoscopeReport}
               transitSnapshot={transitSnapshot}
-              title="Live Gochara Transit Chart"
-              subtitle="Real-Time Planetary Transits • Current Astronomical Sky Position"
+              language={activeLang}
             />
 
             {/* Transit Analysis & Natal Impact Table */}

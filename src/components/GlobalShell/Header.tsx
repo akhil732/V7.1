@@ -2,6 +2,8 @@ import React from 'react';
 import { ArrowLeft, LogIn } from 'lucide-react';
 import { SavedPerson } from '../../types/marriageMatch';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { HEADER_LABELS, Lang } from '../../lib/i18n/astrologicalTerms';
 
 export type NavPage = 'home' | 'kundali' | 'birth-chart' | 'marriage-match' | 'ai-consultation' | 'profile' | 'panchangam' | 'chant' | 'login';
 
@@ -23,9 +25,19 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
   activePage = 'home',
   activeProfile,
   onNavigatePage,
+  language,
+  onLanguageChange,
   rightActions,
 }) => {
   const { user, isAuthenticated } = useAuth();
+  const { language: ctxLanguage, setLanguage: ctxSetLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const labels = HEADER_LABELS[activeLang] || HEADER_LABELS.en;
+
+  const handleLangSelect = (l: 'en' | 'hi' | 'te') => {
+    if (onLanguageChange) onLanguageChange(l);
+    ctxSetLanguage(l);
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-[#FDFBF7]/95 backdrop-blur-md border-b border-[#D4C5B9]/60 shadow-xs h-16 transition-all">
@@ -34,10 +46,10 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           {activePage !== 'home' && (
             <button
-              aria-label="Go back to Home"
+              aria-label={labels.backToHome}
               onClick={() => onNavigatePage('home')}
               className="text-[#E67E22] hover:bg-[#F5ECE1] transition-colors duration-150 rounded-full p-2 flex items-center justify-center cursor-pointer"
-              title="Return to Home"
+              title={labels.backToHome}
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -46,7 +58,7 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
           <button 
             onClick={() => onNavigatePage('home')}
             className="flex items-center gap-2 cursor-pointer group shrink-0 bg-transparent border-none p-0 focus:outline-none rounded-md"
-            aria-label="Jyothishya Sanathanam Home"
+            aria-label={`${labels.title} Home`}
           >
             {logo && (
               <img 
@@ -58,21 +70,40 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
             )}
             <div className="flex flex-col text-left truncate">
               <span className="font-serif font-bold text-lg sm:text-[21px] tracking-tight text-[#E67E22] group-hover:text-[#D35400] transition-colors leading-tight truncate">
-                Jyothishya Sanathanam
+                {labels.title}
               </span>
             </div>
           </button>
         </div>
 
-        {/* Right Section: Custom Page Actions + Login/User Button */}
+        {/* Right Section: Language Switcher, Custom Page Actions + Login/User Button */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Language Switcher */}
+          <div className="flex items-center bg-[#F5ECE1]/60 p-0.5 rounded-xl border border-[#D4C5B9]/50 text-xs">
+            {(['en', 'te', 'hi'] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => handleLangSelect(l)}
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  activeLang === l
+                    ? 'bg-[#E67E22] text-white shadow-2xs'
+                    : 'text-[#8A7B6E] hover:text-[#2C3E50]'
+                }`}
+                aria-label={`Switch language to ${l}`}
+              >
+                {l === 'en' ? 'EN' : l === 'te' ? 'తె' : 'हि'}
+              </button>
+            ))}
+          </div>
+
           {rightActions}
 
           {isAuthenticated && user ? (
             <button
               onClick={() => onNavigatePage('profile')}
               className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[#FAF7F2] hover:bg-[#F5ECE1] border border-[#D4C5B9]/60 transition-colors cursor-pointer"
-              title="View User Profile"
+              title={labels.profile}
             >
               {user.photoURL ? (
                 <img
@@ -100,7 +131,7 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
               }`}
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Login</span>
+              <span>{labels.login}</span>
             </button>
           )}
         </div>

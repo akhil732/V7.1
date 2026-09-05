@@ -3,6 +3,12 @@ import { getPlanetAbbr, formatPlanetDisplay, getPlanetColor } from '../lib/plane
 import { groupPlanetsByHouse, sortPlanetsInHouse } from '../lib/chartLayoutUtils';
 import { calculateActiveDasha } from '../lib/engines/DashaEngine';
 import { getTransitPositions } from './StrategicReport';
+import {
+  SIGN_NAMES_I18N,
+  SIGN_CODES_I18N,
+  PLANET_NAMES_I18N,
+  CHART_LABELS,
+} from '../lib/i18n/astrologicalTerms';
 
 export const SIGN_MAP: Record<string, { number: number; sanskrit: string }> = {
   "Aries": { number: 1, sanskrit: "Mesha" },
@@ -503,7 +509,7 @@ export const DivisionalChart: React.FC<DivisionalChartProps> = ({ horoscopeData,
                 fontWeight="500"
                 fontFamily='"Noto Sans Telugu", sans-serif'
               >
-                H{houseNum}
+                {CHART_LABELS[language]?.housePrefix || 'H'}{houseNum}
               </text>
 
               {/* Rashi number in small gold/saffron text */}
@@ -578,7 +584,7 @@ export const DivisionalChart: React.FC<DivisionalChartProps> = ({ horoscopeData,
           {activeTab}
         </text>
         <text x="200" y="235" textAnchor="middle" fill="var(--ds-on-surface)" fontSize="10" fontFamily='"Noto Sans Telugu", sans-serif'>
-          Lagna: {ascSignName}
+          {CHART_LABELS[language]?.lagnaPrefix || 'Lagna:'} {SIGN_NAMES_I18N[language]?.[ascSignName] || ascSignName}
         </text>
 
         {/* Draw Sign Boxes */}
@@ -616,7 +622,7 @@ export const DivisionalChart: React.FC<DivisionalChartProps> = ({ horoscopeData,
                 fontWeight="bold"
                 fontFamily='"Noto Sans Telugu", sans-serif'
               >
-                {layout.sanskrit.substring(0, 3)} ({signIndex})
+                {SIGN_CODES_I18N[language]?.[layout.name] || layout.sanskrit.substring(0, 3)} ({signIndex})
               </text>
 
               {/* Planet chips */}
@@ -685,7 +691,7 @@ export const DivisionalChart: React.FC<DivisionalChartProps> = ({ horoscopeData,
                   fontWeight="bold"
                   fontFamily='"Noto Sans Telugu", sans-serif'
                 >
-                  {getSignAbbreviation(signIndex, language as 'en' | 'hi' | 'te')} (H{houseNum})
+                  {SIGN_CODES_I18N[language]?.[layout.name] || getSignAbbreviation(signIndex, language as 'en' | 'hi' | 'te')} ({CHART_LABELS[language]?.housePrefix || 'H'}{houseNum})
                 </text>
 
                 {/* Planet chips */}
@@ -713,7 +719,7 @@ export const DivisionalChart: React.FC<DivisionalChartProps> = ({ horoscopeData,
                   fontWeight="bold"
                   fontFamily='"Noto Sans Telugu", sans-serif'
                 >
-                  {getSignAbbreviation(signIndex, language as 'en' | 'hi' | 'te')} (H{houseNum})
+                  {SIGN_CODES_I18N[language]?.[layout.name] || getSignAbbreviation(signIndex, language as 'en' | 'hi' | 'te')} ({CHART_LABELS[language]?.housePrefix || 'H'}{houseNum})
                 </text>
 
                 {/* Planet chips */}
@@ -734,7 +740,7 @@ export const DivisionalChart: React.FC<DivisionalChartProps> = ({ horoscopeData,
           {activeTab}
         </text>
         <text x="200" y="235" textAnchor="middle" fill="var(--ds-on-surface)" fontSize="10" fontFamily='"Noto Sans Telugu", sans-serif'>
-          Lagna: {ascSignName}
+          {CHART_LABELS[language]?.lagnaPrefix || 'Lagna:'} {SIGN_NAMES_I18N[language]?.[ascSignName] || ascSignName}
         </text>
       </svg>
     );
@@ -810,7 +816,7 @@ export const DivisionalChart: React.FC<DivisionalChartProps> = ({ horoscopeData,
             <div className="mb-4 px-4 py-2 bg-ds-surface-container rounded-xl border border-ds-secondary/15 flex items-center justify-between">
               <span className="text-xs text-ds-on-surface-variant">{l.selectedLagna}:</span>
               <span className="text-xs font-semibold text-ds-primary font-serif">
-                {lagnaSign} ({lagnaSanskrit})
+                {SIGN_NAMES_I18N[language]?.[lagnaSign] || lagnaSign} ({lagnaSanskrit})
               </span>
             </div>
 

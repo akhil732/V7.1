@@ -2,14 +2,20 @@ import React from 'react';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 import { Sparkles, ShieldCheck, Heart, ArrowLeft, LogOut, CheckCircle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { LOGIN_LABELS, Lang } from '../lib/i18n/astrologicalTerms';
 
 interface LoginScreenProps {
   onBack?: () => void;
   onNavigatePage?: (page: string) => void;
+  language?: 'en' | 'hi' | 'te';
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage, language }) => {
   const { user, isAuthenticated, signOut, error } = useAuth();
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const l = LOGIN_LABELS[activeLang] || LOGIN_LABELS.en;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0A0E17] relative overflow-hidden px-4 py-12 selection:bg-[#F5A623]/20 selection:text-[#F5A623]">
@@ -20,7 +26,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage
           className="absolute top-6 left-6 z-20 flex items-center gap-2 text-xs font-semibold text-[#9CA3AF] hover:text-[#F5A623] bg-[#10141F]/80 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#1E2433] transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <span>{l.back}</span>
         </button>
       )}
 
@@ -44,15 +50,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage
 
         {/* Brand Header */}
         <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#F5A623] font-mono font-semibold mb-1 flex items-center gap-1.5">
-          <Sparkles className="w-3 h-3" /> Vedic Astrology Engine
+          <Sparkles className="w-3 h-3" /> {l.tagline}
         </span>
         
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#F5F5F7] tracking-wide mb-2">
-          JYOTHISHYA SANATHANAM
+          {l.title}
         </h1>
         
         <p className="text-sm text-[#9CA3AF] mb-6 font-medium">
-          Marriage Compatibility & Horoscope Matching
+          {l.subtitle}
         </p>
 
         <div className="w-full h-px bg-gradient-to-r from-transparent via-[#1E2433] to-transparent mb-6" />
@@ -76,7 +82,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage
               
               <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                 <CheckCircle className="w-3.5 h-3.5" />
-                <span>Signed In Successfully</span>
+                <span>{l.signedInSuccess}</span>
               </div>
 
               <h3 className="font-bold text-base text-[#F5F5F7]">{user.displayName || 'Google User'}</h3>
@@ -89,7 +95,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage
                   onClick={() => onNavigatePage('home')}
                   className="w-full py-3 bg-[#F5A623] hover:bg-[#e0951d] text-[#0A0E17] font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-md"
                 >
-                  Go to Home Dashboard
+                  {l.goToHome}
                 </button>
               )}
               <button
@@ -97,7 +103,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage
                 className="w-full py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/30 text-red-400 font-semibold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
+                <span>{l.signOut}</span>
               </button>
             </div>
           </div>
@@ -106,7 +112,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage
           <>
             {/* Action Callout */}
             <p className="text-xs text-[#D1D5DB] mb-6 leading-relaxed px-2">
-              Sign in with your Google account to save birth profiles, calculate Ashta Kuta compatibility, and sync reports securely.
+              {l.description}
             </p>
 
             {/* Error Alert if any */}
@@ -128,11 +134,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onNavigatePage
         <div className="grid grid-cols-2 gap-2.5 w-full text-left pt-3 border-t border-[#1E2433]/60 text-[11px] text-[#9CA3AF]">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-[#F5A623]" />
-            <span>Secure Cloud Sync</span>
+            <span>{l.secureSync}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Heart className="w-3.5 h-3.5 text-pink-400" />
-            <span>36 Kuta Matching</span>
+            <span>{l.kutaMatching}</span>
           </div>
         </div>
 

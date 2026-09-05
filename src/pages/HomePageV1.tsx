@@ -10,6 +10,19 @@ import { VagdenuWidget } from '../components/VagdenuWidget';
 import { BirthForm } from '../components/BirthForm';
 import { BirthDetails } from '../types';
 import { Music } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { 
+  HOME_LABELS, 
+  Lang, 
+  formatDateAndDayInLanguage, 
+  translatePaksha, 
+  translateTithi, 
+  translateNakshatra, 
+  translateSign, 
+  translatePlanet,
+  translateYoga,
+  translateKarana 
+} from '../lib/i18n/astrologicalTerms';
 
 // South Indian chart layout definitions matching DivisionalChart constants
 export const SOUTH_INDIAN_LAYOUTS: Record<number, {
@@ -243,6 +256,10 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
   todayPanchangamLoading = false,
   todayPanchangamError = null,
 }) => {
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const labels = HOME_LABELS[activeLang] || HOME_LABELS.en;
+
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [chartStyle, setChartStyle] = useState<'south' | 'east'>('east');
   const [showPanchangamModal, setShowPanchangamModal] = useState<boolean>(false);
@@ -409,20 +426,16 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
 
   // Formatted date and live time
   const formattedDayAndDate = useMemo(() => {
-    return currentDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short'
-    });
-  }, [currentDate]);
+    return formatDateAndDayInLanguage(currentDate, activeLang);
+  }, [currentDate, activeLang]);
 
   const formattedLiveTime = useMemo(() => {
-    return currentDate.toLocaleTimeString('en-US', {
+    return currentDate.toLocaleTimeString(activeLang === 'te' ? 'te-IN' : activeLang === 'hi' ? 'hi-IN' : 'en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
     });
-  }, [currentDate]);
+  }, [currentDate, activeLang]);
 
   return (
     <div className="bg-[#FDFBF7] text-[#2C3E50] min-h-screen antialiased flex flex-col font-sans selection:bg-[#FFDDB3] selection:text-[#684300]">
@@ -434,17 +447,17 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
             {formattedDayAndDate}
           </h2>
           <div className="flex items-center gap-2 text-sm sm:text-base text-[#2C3E50] flex-wrap font-normal">
-            <span>{panchangamDetails.paksha}</span>
+            <span>{translatePaksha(panchangamDetails.paksha, activeLang)}</span>
             <span className="w-1 h-1 rounded-full bg-[#D4C5B9]"></span>
-            <span>{panchangamDetails.tithi}</span>
+            <span>{translateTithi(panchangamDetails.tithi, activeLang)}</span>
             <span className="w-1 h-1 rounded-full bg-[#D4C5B9]"></span>
-            <span>{panchangamDetails.nakshatra}</span>
+            <span>{translateNakshatra(panchangamDetails.nakshatra, activeLang)}</span>
           </div>
           <button 
             onClick={() => onNavigatePage('panchangam')}
             className="inline-flex items-center gap-1 text-xs font-semibold text-[#E67E22] mt-1.5 hover:opacity-80 transition-opacity group cursor-pointer w-fit"
           >
-            View Full Panchangam
+            {labels.viewFullPanchangam}
             <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform duration-200">
               arrow_forward_ios
             </span>
@@ -460,11 +473,11 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
               }
             }}
             loading={false}
-            language={language}
+            language={activeLang}
             embedded={true}
-            title="New Kundali"
-            subtitle="Enter birth details for precise calculation."
-            submitButtonText="Generate"
+            title={labels.newKundali}
+            subtitle={labels.subtitle}
+            submitButtonText={labels.generate}
           />
         </section>
 
@@ -487,10 +500,10 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
             </div>
             <div>
               <span className="block font-serif text-base font-bold text-[#2C3E50]">
-                My Kundalis
+                {labels.myKundalis}
               </span>
               <span className="block text-xs text-[#564337]/80 mt-0.5">
-                Saved charts library
+                {labels.savedCharts}
               </span>
             </div>
           </button>
@@ -507,10 +520,10 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
             </div>
             <div>
               <span className="block font-serif text-base font-bold text-[#2C3E50]">
-                New Match
+                {labels.newMatch}
               </span>
               <span className="block text-xs text-[#564337]/80 mt-0.5">
-                Compatibility analysis
+                {labels.compatibilityAnalysis}
               </span>
             </div>
           </button>
@@ -530,7 +543,7 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
 
             <div className="border-b border-[#D4C5B9]/30 pb-3">
               <h3 className="font-serif font-bold text-xl text-[#2C3E50]">
-                Today's Panchangam
+                {labels.todaysPanchangam}
               </h3>
               <p className="text-xs text-[#E67E22] font-semibold mt-0.5">
                 {formattedDayAndDate} • {formattedLiveTime}
@@ -539,27 +552,29 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-[#FDFBF7] p-3 rounded-xl border border-[#D4C5B9]/30">
-                <span className="text-[11px] text-[#8A7B6E] font-medium block">Tithi</span>
-                <span className="font-semibold text-[#2C3E50]">{panchangamDetails.paksha} {panchangamDetails.tithi}</span>
+                <span className="text-[11px] text-[#8A7B6E] font-medium block">{labels.tithi}</span>
+                <span className="font-semibold text-[#2C3E50]">
+                  {translatePaksha(panchangamDetails.paksha, activeLang)} {translateTithi(panchangamDetails.tithi, activeLang)}
+                </span>
               </div>
               <div className="bg-[#FDFBF7] p-3 rounded-xl border border-[#D4C5B9]/30">
-                <span className="text-[11px] text-[#8A7B6E] font-medium block">Nakshatra</span>
-                <span className="font-semibold text-[#2C3E50]">{panchangamDetails.nakshatra}</span>
+                <span className="text-[11px] text-[#8A7B6E] font-medium block">{labels.nakshatra}</span>
+                <span className="font-semibold text-[#2C3E50]">{translateNakshatra(panchangamDetails.nakshatra, activeLang)}</span>
               </div>
               <div className="bg-[#FDFBF7] p-3 rounded-xl border border-[#D4C5B9]/30">
-                <span className="text-[11px] text-[#8A7B6E] font-medium block">Vaara</span>
+                <span className="text-[11px] text-[#8A7B6E] font-medium block">{labels.vaara}</span>
                 <span className="font-semibold text-[#2C3E50]">{panchangamDetails.vaara}</span>
               </div>
               <div className="bg-[#FDFBF7] p-3 rounded-xl border border-[#D4C5B9]/30">
-                <span className="text-[11px] text-[#8A7B6E] font-medium block">Yoga / Karana</span>
-                <span className="font-semibold text-[#2C3E50]">{panchangamDetails.yoga} / {panchangamDetails.karana}</span>
+                <span className="text-[11px] text-[#8A7B6E] font-medium block">{labels.yogaKarana}</span>
+                <span className="font-semibold text-[#2C3E50]">{translateYoga(panchangamDetails.yoga, activeLang)} / {translateKarana(panchangamDetails.karana, activeLang)}</span>
               </div>
               <div className="bg-[#FDFBF7] p-3 rounded-xl border border-[#D4C5B9]/30">
-                <span className="text-[11px] text-[#8A7B6E] font-medium block">Sunrise / Sunset</span>
+                <span className="text-[11px] text-[#8A7B6E] font-medium block">{labels.sunrise}</span>
                 <span className="font-semibold text-[#2C3E50]">{panchangamDetails.sunrise} - {panchangamDetails.sunset}</span>
               </div>
               <div className="bg-[#FDFBF7] p-3 rounded-xl border border-[#D4C5B9]/30">
-                <span className="text-[11px] text-[#8A7B6E] font-medium block">Rahu Kalam</span>
+                <span className="text-[11px] text-[#8A7B6E] font-medium block">{labels.rahuKalam}</span>
                 <span className="font-semibold text-[#BA1A1A]">{panchangamDetails.rahuKalam}</span>
               </div>
             </div>
@@ -568,7 +583,7 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
               onClick={() => setShowPanchangamModal(false)}
               className="w-full py-2.5 bg-[#E67E22] text-white rounded-xl font-semibold text-sm hover:bg-[#E67E22]/90 transition-colors cursor-pointer"
             >
-              Close
+              {labels.close}
             </button>
           </div>
         </div>
@@ -586,13 +601,13 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
             </button>
 
             <h4 className="font-serif font-bold text-lg text-[#2C3E50]">
-              {selectedSignDetail.signName} (Gochara)
+              {translateSign(selectedSignDetail.signName, activeLang)} (Gochara)
             </h4>
 
             <div className="space-y-2 pt-1">
-              <span className="text-xs text-[#8A7B6E]">Transiting Grahas:</span>
+              <span className="text-xs text-[#8A7B6E]">{labels.transitingGrahas}</span>
               {selectedSignDetail.planets.length === 0 ? (
-                <p className="text-sm text-[#564337]/70 italic">No transiting planets currently in this rashi.</p>
+                <p className="text-sm text-[#564337]/70 italic">{labels.noPlanets}</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {selectedSignDetail.planets.map((abbr) => {
@@ -604,7 +619,7 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
                       <div key={abbr} className="px-3 py-1.5 bg-[#F5ECE1] rounded-lg border border-[#E67E22]/30 flex items-center gap-2">
                         <span className="font-mono font-bold text-[#E67E22] text-sm">{abbr}</span>
                         <span className="text-xs text-[#2C3E50] font-medium">
-                          {fullPlanet} {pos ? `(${pos.degreeInSign.toFixed(1)}°)` : ''}
+                          {translatePlanet(fullPlanet, activeLang)} {pos ? `(${pos.degreeInSign.toFixed(1)}°)` : ''}
                         </span>
                       </div>
                     );
@@ -617,7 +632,7 @@ export const HomePageV1: React.FC<HomePageV1Props> = ({
               onClick={() => setSelectedSignDetail(null)}
               className="w-full py-2 bg-[#2C3E50] text-white rounded-xl text-xs font-semibold hover:bg-[#2C3E50]/90 transition-colors cursor-pointer mt-2"
             >
-              Done
+              {labels.done}
             </button>
           </div>
         </div>

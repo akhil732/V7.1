@@ -1,6 +1,15 @@
 import React from 'react';
 import { Compass, Clock, Sparkles, Shield, AlertTriangle } from 'lucide-react';
 import { PlanetKey } from '../lib/engines/LiveTransitEngine';
+import { useLanguage } from '../context/LanguageContext';
+import { 
+  TRANSIT_LABELS, 
+  Lang, 
+  translateSign, 
+  translatePlanet, 
+  translateTransitSaturnDesc, 
+  translateTransitJupiterDesc 
+} from '../lib/i18n/astrologicalTerms';
 
 interface TransitAnalysisViewProps {
   transitSnapshot: any;
@@ -21,6 +30,10 @@ export const TransitAnalysisView: React.FC<TransitAnalysisViewProps> = ({
   horoscopeData,
   language = 'en'
 }) => {
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const labels = TRANSIT_LABELS[activeLang] || TRANSIT_LABELS.en;
+
   // Extract Natal Lagna and Moon
   const natalD1 = horoscopeData?.horoscope?.divisional_charts?.["D-1_rasi"] || horoscopeData?.rasi || {};
   const natalLagnaSign = natalD1?.Ascendant?.sign || natalD1?.Lagna?.sign || 'Aries';
@@ -52,10 +65,10 @@ export const TransitAnalysisView: React.FC<TransitAnalysisViewProps> = ({
         <div>
           <h3 className="font-serif font-bold text-base sm:text-lg text-[#2C3E50] flex items-center gap-2">
             <Compass className="w-4 h-4 text-[#E67E22]" />
-            <span>Gochara (Transit) Coordinates & Natal Impact</span>
+            <span>{labels.title}</span>
           </h3>
           <p className="text-xs text-[#8A7B6E] mt-0.5 font-medium">
-            Real-time planetary transits calculated relative to your Natal Lagna ({natalLagnaSign}) and Janma Rasi ({natalMoonSign})
+            {labels.subtitle(natalLagnaSign, natalMoonSign)}
           </p>
         </div>
       </div>
@@ -71,16 +84,22 @@ export const TransitAnalysisView: React.FC<TransitAnalysisViewProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#2C3E50]">Saturn Transit (Shani Gochara)</span>
+              <span className="text-xs font-bold text-[#2C3E50]">{labels.saturnTransit}</span>
               {isSadeSati && (
                 <span className="bg-[#BA1A1A]/10 text-[#BA1A1A] border border-[#BA1A1A]/20 px-2 py-0.2 rounded-full text-[9px] font-bold uppercase">
-                  Sade Sati Active
+                  {labels.sadeSatiActive}
                 </span>
               )}
             </div>
             <p className="text-xs text-[#564337] mt-1 leading-relaxed">
-              Saturn is currently transiting <strong>{saturnSign}</strong> ({((saturnIdx - lagnaIdx + 12) % 12) + 1}th from Lagna, {((saturnIdx - moonIdx + 12) % 12) + 1}th from Moon).
-              {isSadeSati ? ` Native is experiencing Sade Sati (${sadeSatiPhase}). Cultivate discipline and patience.` : ' No active Sade Sati pressure currently.'}
+              {translateTransitSaturnDesc(
+                saturnSign,
+                ((saturnIdx - lagnaIdx + 12) % 12) + 1,
+                ((saturnIdx - moonIdx + 12) % 12) + 1,
+                isSadeSati,
+                sadeSatiPhase,
+                activeLang
+              )}
             </p>
           </div>
         </div>
@@ -94,16 +113,20 @@ export const TransitAnalysisView: React.FC<TransitAnalysisViewProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#2C3E50]">Jupiter Transit (Guru Gochara)</span>
+              <span className="text-xs font-bold text-[#2C3E50]">{labels.jupiterTransit}</span>
               {isJupiterAuspicious && (
                 <span className="bg-[#2E7D32]/10 text-[#2E7D32] border border-[#2E7D32]/20 px-2 py-0.2 rounded-full text-[9px] font-bold uppercase">
-                  Auspicious
+                  {labels.auspicious}
                 </span>
               )}
             </div>
             <p className="text-xs text-[#564337] mt-1 leading-relaxed">
-              Jupiter is currently in <strong>{jupiterSign}</strong> (House {jupiterHouseFromMoon} from Janma Moon).
-              {isJupiterAuspicious ? ' Favorable placement bestowing wisdom, supportive alliances, and mental clarity.' : ' Focus on steady internal reflection and steady duties.'}
+              {translateTransitJupiterDesc(
+                jupiterSign,
+                jupiterHouseFromMoon,
+                isJupiterAuspicious,
+                activeLang
+              )}
             </p>
           </div>
         </div>
@@ -114,11 +137,11 @@ export const TransitAnalysisView: React.FC<TransitAnalysisViewProps> = ({
         <table className="w-full text-left text-xs text-[#2C3E50]">
           <thead className="bg-[#FDFBF7] text-[10px] uppercase font-mono font-bold text-[#8A7B6E]">
             <tr>
-              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">Graha</th>
-              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">Current Sign & Degrees</th>
-              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">Status</th>
-              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">From Natal Lagna</th>
-              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">From Janma Moon</th>
+              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">{labels.graha}</th>
+              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">{labels.currentSignDeg}</th>
+              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">{labels.status}</th>
+              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">{labels.fromLagna}</th>
+              <th className="py-3 px-4 border-b border-[#D4C5B9]/30">{labels.fromMoon}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#D4C5B9]/20 bg-white">
@@ -130,29 +153,31 @@ export const TransitAnalysisView: React.FC<TransitAnalysisViewProps> = ({
               const houseFromMoon = ((signNum - moonIdx + 12) % 12) + 1;
               const deg = pos?.siderealLongitude ? (pos.siderealLongitude % 30).toFixed(2) : '0.00';
               const isRetro = pos?.isRetrograde;
+              const translatedPlanetName = translatePlanet(pKey, activeLang);
+              const translatedSignName = translateSign(signName, activeLang);
 
               return (
                 <tr key={pKey} className={idx % 2 === 0 ? 'bg-transparent' : 'bg-[#FDFBF7]/50'}>
                   <td className="py-3 px-4 font-bold text-[#2C3E50] whitespace-nowrap">
-                    {pKey}
+                    {translatedPlanetName}
                   </td>
                   <td className="py-3 px-4 font-serif font-semibold text-[#E67E22] whitespace-nowrap">
-                    {deg}° in {signName}
+                    {deg}° ({translatedSignName})
                   </td>
                   <td className="py-3 px-4 whitespace-nowrap">
                     {isRetro ? (
                       <span className="bg-[#BA1A1A]/10 text-[#BA1A1A] border border-[#BA1A1A]/30 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold">
-                        Retrograde (Rx)
+                        {labels.retrograde}
                       </span>
                     ) : (
-                      <span className="text-[#2E7D32] text-[11px] font-semibold">Direct</span>
+                      <span className="text-[#2E7D32] text-[11px] font-semibold">{labels.direct}</span>
                     )}
                   </td>
                   <td className="py-3 px-4 font-mono font-semibold text-[#2C3E50] whitespace-nowrap">
-                    House {houseFromLagna}
+                    {labels.house(houseFromLagna)}
                   </td>
                   <td className="py-3 px-4 font-mono font-semibold text-[#2C3E50] whitespace-nowrap">
-                    House {houseFromMoon}
+                    {labels.house(houseFromMoon)}
                   </td>
                 </tr>
               );

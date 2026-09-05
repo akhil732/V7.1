@@ -1,18 +1,25 @@
 import React, { useState } from 'react';
 import { KPChart } from '../../types/kp';
 import { UnifiedAstrologyChart } from '../UnifiedAstrologyChart';
+import { useLanguage } from '../../context/LanguageContext';
+import { CHART_LABELS } from '../../lib/i18n/astrologicalTerms';
 
 interface RVATripleChartsProps {
   kpChart?: KPChart;
   horoscopeData?: any;
   transitSnapshot?: any;
+  language?: 'en' | 'hi' | 'te';
 }
 
 export const RVATripleCharts: React.FC<RVATripleChartsProps> = ({
   horoscopeData,
-  transitSnapshot
+  transitSnapshot,
+  language: propLang
 }) => {
   const [activeChartFocus, setActiveChartFocus] = useState<'all' | 'd1' | 'transit' | 'd9'>('all');
+  const { language: ctxLang } = useLanguage();
+  const activeLang = propLang || ctxLang || 'en';
+  const chartLabels = CHART_LABELS[activeLang] || CHART_LABELS.en;
 
   return (
     <div className="space-y-6">
@@ -20,10 +27,10 @@ export const RVATripleCharts: React.FC<RVATripleChartsProps> = ({
       <div className="bg-[#FAF7F2] p-2 rounded-2xl border border-[#D4C5B9]/40 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none w-full sm:w-auto">
           {[
-            { key: 'all', label: 'All 3 Triple Charts (D1, Transit, D9)' },
-            { key: 'd1', label: 'D1 Rasi' },
-            { key: 'transit', label: 'Transit (Gochara)' },
-            { key: 'd9', label: 'D9 Navamsha' },
+            { key: 'all', label: chartLabels.allTriple },
+            { key: 'd1', label: chartLabels.tabD1 },
+            { key: 'transit', label: chartLabels.tabTransit },
+            { key: 'd9', label: chartLabels.tabD9 },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -52,8 +59,9 @@ export const RVATripleCharts: React.FC<RVATripleChartsProps> = ({
             <UnifiedAstrologyChart
               chartType="D1"
               horoscopeData={horoscopeData}
-              title="D1 Rasi Natal Chart"
-              subtitle="Lagna Chart • Physical Incarnation & Lifelong Blueprint"
+              language={activeLang}
+              title={chartLabels.d1Title}
+              subtitle={chartLabels.d1Subtitle}
             />
           </div>
         )}
@@ -65,8 +73,9 @@ export const RVATripleCharts: React.FC<RVATripleChartsProps> = ({
               chartType="Transit"
               horoscopeData={horoscopeData}
               transitSnapshot={transitSnapshot}
-              title="Live Gochara Transit Chart"
-              subtitle="Real-Time Planetary Transits & Sky Position"
+              language={activeLang}
+              title={chartLabels.transitTitle}
+              subtitle={chartLabels.transitSubtitle}
             />
           </div>
         )}
@@ -77,8 +86,9 @@ export const RVATripleCharts: React.FC<RVATripleChartsProps> = ({
             <UnifiedAstrologyChart
               chartType="D9"
               horoscopeData={horoscopeData}
-              title="D9 Navamsha Chart"
-              subtitle="9th Harmonic Division • Dharma, Inner Soul Strength & Marital Harmony"
+              language={activeLang}
+              title={chartLabels.d9Title}
+              subtitle={chartLabels.d9Subtitle}
             />
           </div>
         )}

@@ -17,6 +17,8 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { CHANT_LABELS, Lang } from '../lib/i18n/astrologicalTerms';
 
 interface ChantPageProps {
   language?: 'en' | 'hi' | 'te';
@@ -104,7 +106,11 @@ const SAMPLE_SHLOKAS: ShlokaSample[] = [
   }
 ];
 
-export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack }) => {
+export const ChantPage: React.FC<ChantPageProps> = ({ language, onBack }) => {
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = ((language || ctxLanguage) as Lang) || 'en';
+  const l = CHANT_LABELS[activeLang] || CHANT_LABELS.en;
+
   const [verseText, setVerseText] = useState(
     'वक्रतुण्ड महाकाय सूर्यकोटिसमप्रभ ।\nनिर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा ॥'
   );
@@ -128,7 +134,7 @@ export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack })
 
   const handleChant = async () => {
     if (!verseText.trim()) {
-      setError('Please paste or enter a Sanskrit shloka in Devanagari.');
+      setError(l.emptyError);
       return;
     }
 
@@ -223,9 +229,9 @@ export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack })
               {/* Text Input Header */}
               <div className="flex items-center justify-between">
                 <label className="font-serif font-bold text-base text-[#2C3E50] flex items-center gap-2">
-                  <span>Sanskrit Verse (Devanagari)</span>
+                  <span>{l.sanskritVerse}</span>
                   <span className="text-xs font-sans font-normal text-[#8A7B6E]">
-                    (1–4 lines)
+                    {l.linesLimit}
                   </span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -236,7 +242,7 @@ export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack })
                     title="Copy Verse"
                   >
                     {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                    <span>{copied ? l.copied : l.copy}</span>
                   </button>
                   <button
                     type="button"
@@ -245,7 +251,7 @@ export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack })
                     title="Clear Text"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Clear</span>
+                    <span>{l.clear}</span>
                   </button>
                 </div>
               </div>
@@ -259,10 +265,7 @@ export const ChantPage: React.FC<ChantPageProps> = ({ language = 'en', onBack })
                     if (error) setError(null);
                   }}
                   rows={4}
-                  placeholder="Paste your Sanskrit shloka in Devanagari script...
-e.g.
-यदा यदा हि धर्मस्य ग्लानिर्भवति भारत ।
-अभ्युत्थानमधर्मस्य तदात्मानं सृजाम्यहम् ॥"
+                  placeholder={l.versePlaceholder}
                   className="w-full px-4 py-3 bg-[#FDFBF7] border border-[#D4C5B9]/80 focus:border-[#E67E22] rounded-xl text-base text-[#2C3E50] focus:outline-none focus:ring-2 focus:ring-[#E67E22]/20 transition-all font-sans leading-relaxed resize-y"
                 />
                 <div className="flex items-center justify-between text-[11px] text-[#8A7B6E] px-1 pt-1">
@@ -280,10 +283,10 @@ e.g.
                 >
                   <div className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-[#E67E22]" />
-                    <span>Advanced Settings</span>
+                    <span>{l.advancedSettings}</span>
                   </div>
                   <div className="flex items-center gap-1 text-[11px] font-normal text-[#8A7B6E]">
-                    <span>{showAdvanced ? 'Hide' : 'Show'}</span>
+                    <span>{showAdvanced ? l.hide : l.show}</span>
                     {showAdvanced ? <ChevronUp className="w-4 h-4 text-[#E67E22]" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </button>
@@ -294,7 +297,7 @@ e.g.
                     <div>
                       <label className="block text-xs font-bold text-[#2C3E50] mb-1.5 flex items-center gap-1.5">
                         <Sliders className="w-3.5 h-3.5 text-[#E67E22]" />
-                        <span>Meter (Chandas)</span>
+                        <span>{l.meterChandas}</span>
                       </label>
                       <select
                         value={selectedMeter}
@@ -317,7 +320,7 @@ e.g.
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-bold text-[#2C3E50] flex items-center gap-1.5">
                           <RefreshCw className="w-3.5 h-3.5 text-[#E67E22]" />
-                          <span>Acoustic Seed</span>
+                          <span>{l.acousticSeed}</span>
                         </label>
                         <span className="text-xs font-mono font-bold text-[#E67E22] bg-[#E67E22]/10 px-1.5 py-0.5 rounded">
                           {seed}
@@ -352,12 +355,12 @@ e.g.
                 {loading ? (
                   <>
                     <Loader className="w-4 h-4 animate-spin" />
-                    <span>{renderStep || 'Synthesizing Chant...'}</span>
+                    <span>{renderStep || l.synthesizing}</span>
                   </>
                 ) : (
                   <>
                     <Music className="w-4 h-4" />
-                    <span>🎧 Chant It (Render Audio)</span>
+                    <span>{l.chantIt}</span>
                   </>
                 )}
               </button>
@@ -367,13 +370,12 @@ e.g.
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1 text-red-900 text-sm animate-in fade-in">
                 <div className="flex items-center gap-2 font-bold text-red-700">
-                  <span>❌ Synthesis Notice:</span>
+                  <span>❌ {l.synthesisNotice}</span>
                 </div>
                 <p className="text-xs text-red-800 leading-relaxed">{error}</p>
               </div>
             )}
 
-            {/* Audio Output Player Card */}
             {audioUrl && (
               <div className="bg-gradient-to-br from-[#FFF9F2] to-[#FFF3E5] border border-[#E67E22]/40 rounded-2xl p-5 space-y-4 shadow-sm animate-in fade-in zoom-in duration-200">
                 <div className="flex items-center justify-between">
@@ -383,10 +385,10 @@ e.g.
                     </div>
                     <div>
                       <h3 className="font-serif font-bold text-base text-[#2C3E50]">
-                        Chant Rendered Successfully
+                        {l.chantRenderedSuccess}
                       </h3>
                       <p className="text-xs text-[#E67E22] font-medium">
-                        24kHz High-Fidelity Master
+                        {l.highFidelityMaster}
                       </p>
                     </div>
                   </div>
@@ -414,7 +416,7 @@ e.g.
                     className="flex-1 py-2.5 bg-[#2C3E50] hover:bg-[#1A252F] text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download WAV File</span>
+                    <span>{l.downloadWav}</span>
                   </button>
                   <button
                     type="button"
@@ -422,7 +424,7 @@ e.g.
                     className="px-4 py-2.5 bg-white hover:bg-[#F5ECE1] border border-[#E67E22]/40 text-[#E67E22] font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Re-render</span>
+                    <span>{l.rerender}</span>
                   </button>
                 </div>
               </div>
@@ -435,10 +437,10 @@ e.g.
               <div className="flex items-center justify-between">
                 <h3 className="font-serif font-bold text-base text-[#2C3E50] flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-[#E67E22]" />
-                  <span>📜 Preset Shlokas</span>
+                  <span>{l.presetShlokas}</span>
                 </h3>
                 <span className="text-xs text-[#8A7B6E]">
-                  {SAMPLE_SHLOKAS.length} Classical verses
+                  {SAMPLE_SHLOKAS.length} {l.classicalVerses}
                 </span>
               </div>
 

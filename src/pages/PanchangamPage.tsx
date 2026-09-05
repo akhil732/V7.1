@@ -24,6 +24,25 @@ import {
   SIGN_NAMES_TELUGU 
 } from '../lib/engines/LiveTransitEngine';
 import { SavedPerson } from '../types/marriageMatch';
+import { useLanguage } from '../context/LanguageContext';
+import {
+  PANCHANGAM_PAGE_STRINGS,
+  SIGN_NAMES_I18N,
+  SIGN_CODES_I18N,
+  PLANET_NAMES_I18N,
+  PLANET_ABBREVIATIONS_I18N,
+  ELEMENT_NAMES_I18N,
+  CHART_LABELS,
+  Lang,
+  translatePaksha,
+  translateTithi,
+  translateNakshatra,
+  translateYoga,
+  translateKarana,
+  translatePlanet,
+  translateSign,
+  translateVaara
+} from '../lib/i18n/astrologicalTerms';
 
 interface PanchangamPageProps {
   todayPanchangam?: any | null;
@@ -251,6 +270,11 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
   language = 'en',
   onBack,
 }) => {
+  const { language: ctxLanguage } = useLanguage();
+  const activeLang = language || ctxLanguage || 'en';
+  const pSt = PANCHANGAM_PAGE_STRINGS[activeLang] || PANCHANGAM_PAGE_STRINGS.en;
+  const chartLabels = CHART_LABELS[activeLang] || CHART_LABELS.en;
+
   // Selected Date State
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [chartStyle, setChartStyle] = useState<'south' | 'north' | 'east'>('east');
@@ -509,13 +533,13 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
   }, [selectedDate]);
 
   const formattedSelectedDate = useMemo(() => {
-    return selectedDate.toLocaleDateString('en-US', {
+    return selectedDate.toLocaleDateString(activeLang === 'te' ? 'te-IN' : activeLang === 'hi' ? 'hi-IN' : 'en-US', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
-  }, [selectedDate]);
+  }, [selectedDate, activeLang]);
 
   const isToday = selectedDate.toDateString() === new Date().toDateString();
 
@@ -531,10 +555,10 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-serif font-bold text-lg sm:text-xl text-[#2C3E50] leading-tight">
-                  Panchangam & Transit Chart
+                  {pSt.headerTitle}
                 </h1>
                 <span className="bg-[#FFDDB3]/60 text-[#8C4A00] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider hidden sm:inline-block">
-                  Live Gochara
+                  {pSt.liveBadge}
                 </span>
               </div>
               <p className="text-xs text-[#8A7B6E] flex items-center gap-1.5 mt-0.5">
@@ -551,7 +575,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                 className="px-3 py-1.5 text-xs font-semibold text-[#E67E22] bg-[#F5ECE1] hover:bg-[#E67E22]/15 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Today</span>
+                <span>{pSt.todayBtn}</span>
               </button>
             )}
           </div>
@@ -565,7 +589,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               className="p-1.5 rounded-lg hover:bg-[#F5ECE1] text-[#564337] transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Prev Day</span>
+              <span className="hidden sm:inline">{pSt.prevDay}</span>
             </button>
 
             <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-[#D4C5B9]/40 shadow-2xs">
@@ -587,7 +611,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               onClick={() => handleShiftDate(1)}
               className="p-1.5 rounded-lg hover:bg-[#F5ECE1] text-[#564337] transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
             >
-              <span className="hidden sm:inline">Next Day</span>
+              <span className="hidden sm:inline">{pSt.nextDay}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -604,7 +628,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E67E22]/20 pb-3">
             <div>
               <span className="text-xs font-bold text-[#E67E22] uppercase tracking-widest block">
-                Vedic Almanac • దిన పంచాంగ విశేషాలు
+                {pSt.almanacTitle}
               </span>
               <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#2C3E50] mt-0.5">
                 {formattedSelectedDate}
@@ -623,20 +647,20 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
           {/* Sub almanac details: Ayana, Ritu, Masa */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
             <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Ayana (ఆయనం)</span>
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">{pSt.ayana}</span>
               <span className="font-semibold text-[#2C3E50]">{panchangDetails.ayana}</span>
             </div>
             <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Ritu (ఋతువు)</span>
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">{pSt.ritu}</span>
               <span className="font-semibold text-[#2C3E50]">{panchangDetails.ritu}</span>
             </div>
             <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Surya Rasi (సూర్య రాశి)</span>
-              <span className="font-semibold text-[#2C3E50]">{panchangDetails.sunSign}</span>
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">{pSt.suryaRasi}</span>
+              <span className="font-semibold text-[#2C3E50]">{SIGN_NAMES_I18N[activeLang]?.[panchangDetails.sunSign.split(' ')[0]] || panchangDetails.sunSign}</span>
             </div>
             <div className="bg-white/70 p-2.5 rounded-xl border border-[#D4C5B9]/30">
-              <span className="text-[10px] text-[#8A7B6E] font-medium block">Chandra Rasi (చంద్ర రాశి)</span>
-              <span className="font-semibold text-[#2C3E50]">{panchangDetails.moonSign}</span>
+              <span className="text-[10px] text-[#8A7B6E] font-medium block">{pSt.chandraRasi}</span>
+              <span className="font-semibold text-[#2C3E50]">{SIGN_NAMES_I18N[activeLang]?.[panchangDetails.moonSign.split(' ')[0]] || panchangDetails.moonSign}</span>
             </div>
           </div>
         </section>
@@ -654,10 +678,10 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               </div>
               <div>
                 <h2 className="font-serif text-lg sm:text-xl font-bold text-[#2C3E50]">
-                  Gochara Chakra (Transit Chart)
+                  {pSt.transitChartHeader}
                 </h2>
                 <p className="text-[11px] text-[#8A7B6E]">
-                  Lahiri Ayanamsha • Ephemeris Ground Truth ({transitSnapshot.ayanamsa.toFixed(2)}°)
+                  {pSt.transitAyanamsha} ({transitSnapshot.ayanamsa.toFixed(2)}°)
                 </p>
               </div>
             </div>
@@ -669,7 +693,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#BA1A1A]"></span>
                 </span>
                 <span className="text-[10px] font-bold text-[#684300] uppercase tracking-wider">
-                  {isToday ? `LIVE · ${currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : `TRANSIT FOR ${formattedSelectedDate}`}
+                  {isToday ? `LIVE · ${currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : `${pSt.transitForPrefix} ${formattedSelectedDate}`}
                 </span>
               </div>
             </div>
@@ -677,7 +701,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
 
           {/* Chart Style Switcher Buttons */}
           <div className="px-4 py-2.5 bg-[#FDFBF7]/50 border-b border-[#D4C5B9]/20 flex justify-between items-center flex-wrap gap-2">
-            <span className="text-xs font-semibold text-[#8A7B6E]">Chart Format:</span>
+            <span className="text-xs font-semibold text-[#8A7B6E]">{chartLabels.chartFormat || 'Chart Format:'}</span>
             <div className="inline-flex bg-[#F5ECE1] p-1 rounded-xl border border-[#D4C5B9]/40 text-xs font-semibold gap-1">
               <button
                 onClick={() => setChartStyle('south')}
@@ -687,7 +711,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                     : 'text-[#8A7B6E] hover:text-[#2C3E50]'
                 }`}
               >
-                South Indian
+                {chartLabels.southIndian || 'South Indian'}
               </button>
               <button
                 onClick={() => setChartStyle('north')}
@@ -697,7 +721,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                     : 'text-[#8A7B6E] hover:text-[#2C3E50]'
                 }`}
               >
-                North Indian
+                {chartLabels.northIndian || 'North Indian'}
               </button>
               <button
                 onClick={() => setChartStyle('east')}
@@ -707,7 +731,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                     : 'text-[#8A7B6E] hover:text-[#2C3E50]'
                 }`}
               >
-                East Indian
+                {chartLabels.eastIndian || 'East Indian'}
               </button>
             </div>
           </div>
@@ -760,7 +784,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                       letterSpacing="0.2em" 
                       fontFamily="Inter, sans-serif"
                     >
-                      GOCHARA
+                      {chartLabels.gochara || 'GOCHARA'}
                     </text>
                     <text 
                       x="140" 
@@ -771,7 +795,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                       fontWeight="500" 
                       fontFamily="Inter, sans-serif"
                     >
-                      {panchangDetails.sunSign.split(' ')[0]} Sun
+                      {SIGN_NAMES_I18N[activeLang]?.[panchangDetails.sunSign.split(' ')[0]] || panchangDetails.sunSign.split(' ')[0]} {pSt.sunSuffix}
                     </text>
                   </g>
 
@@ -810,13 +834,14 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                           letterSpacing="0.05em" 
                           fontFamily="Inter, sans-serif"
                         >
-                          {layout.code}
+                          {SIGN_CODES_I18N[activeLang]?.[layout.name] || layout.code}
                         </text>
 
                         {/* Transiting Planet Pills in this sign */}
                         {planets.map((p, pIdx) => {
                           const px = x + 16 + (pIdx % 2) * 26;
                           const py = y + 26 + Math.floor(pIdx / 2) * 16;
+                          const localizedAbbr = PLANET_ABBREVIATIONS_I18N[activeLang]?.[p.full] || p.abbr;
                           return (
                             <g key={p.abbr}>
                               <text
@@ -827,7 +852,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                                 fontWeight="800"
                                 fontFamily="Inter, sans-serif"
                               >
-                                {p.abbr}
+                                {localizedAbbr}
                               </text>
                               <text
                                 x={px + 14}
@@ -883,6 +908,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                         {planets.map((p, pIdx) => {
                           const px = layout.center.x + (pIdx % 2 === 0 ? -12 : 12);
                           const py = layout.center.y + (pIdx < 2 ? 0 : 14);
+                          const localizedAbbr = PLANET_ABBREVIATIONS_I18N[activeLang]?.[p.full] || p.abbr;
                           return (
                             <text
                               key={p.abbr}
@@ -893,7 +919,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                               fontSize="11"
                               fontWeight="800"
                             >
-                              {p.abbr}
+                              {localizedAbbr}
                             </text>
                           );
                         })}
@@ -929,7 +955,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                     letterSpacing="0.2em" 
                     fontFamily="Inter, sans-serif"
                   >
-                    GOCHARA
+                    {chartLabels.gochara || 'GOCHARA'}
                   </text>
                   <text 
                     x="200" 
@@ -940,7 +966,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                     fontWeight="500" 
                     fontFamily="Inter, sans-serif"
                   >
-                    {panchangDetails.sunSign.split(' ')[0]} Sun
+                    {SIGN_NAMES_I18N[activeLang]?.[panchangDetails.sunSign.split(' ')[0]] || panchangDetails.sunSign.split(' ')[0]} {pSt.sunSuffix}
                   </text>
 
                   {/* 12 Signs in East Indian Layout */}
@@ -985,12 +1011,13 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                           fontWeight="700" 
                           fontFamily="Inter, sans-serif"
                         >
-                          {layout.code}
+                          {SIGN_CODES_I18N[activeLang]?.[layout.name] || layout.code}
                         </text>
 
                         {planets.map((p, pIdx) => {
                           const px = layout.center.x + (pIdx % 2 === 0 ? -12 : 12);
                           const py = layout.center.y + (pIdx < 2 ? 0 : 14);
+                          const localizedAbbr = PLANET_ABBREVIATIONS_I18N[activeLang]?.[p.full] || p.abbr;
                           return (
                             <g key={p.abbr + pIdx}>
                               <text
@@ -1002,7 +1029,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                                 fontWeight="800"
                                 fontFamily="Inter, sans-serif"
                               >
-                                {p.abbr}
+                                {localizedAbbr}
                               </text>
                             </g>
                           );
@@ -1018,16 +1045,21 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
             <div className="flex-1 w-full space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#8A7B6E] uppercase tracking-wider">
-                  Planetary Transit Positions (గ్రహ సంచారము)
+                  {pSt.planetaryTransitsTitle}
                 </span>
                 <span className="text-[11px] text-[#E67E22] font-semibold">
-                  Chandra: {panchangDetails.moonSign.split(' ')[0]}
+                  {pSt.chandraPrefix}: {SIGN_NAMES_I18N[activeLang]?.[panchangDetails.moonSign.split(' ')[0]] || panchangDetails.moonSign.split(' ')[0]}
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-xs">
                 {(Object.keys(transitSnapshot.positions) as PlanetKey[]).map((planet) => {
                   const pos = transitSnapshot.positions[planet];
+                  const localizedPlanetAbbr = PLANET_ABBREVIATIONS_I18N[activeLang]?.[planet] || PLANET_ABBR[planet];
+                  const localizedPlanetName = PLANET_NAMES_I18N[activeLang]?.[planet] || planet;
+                  const localizedSignName = SIGN_NAMES_I18N[activeLang]?.[pos.sign] || pos.sign;
+                  const localizedSignCode = SIGN_CODES_I18N[activeLang]?.[pos.sign] || SIGN_DATA[pos.sign]?.code || '';
+
                   return (
                     <div 
                       key={planet}
@@ -1038,7 +1070,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                           className="font-mono font-bold text-xs px-1.5 py-0.5 rounded-md"
                           style={{ color: PLANET_COLORS[planet], backgroundColor: `${PLANET_COLORS[planet]}15` }}
                         >
-                          {PLANET_ABBR[planet]}
+                          {localizedPlanetAbbr}
                         </span>
                         <span className="text-[10px] text-[#8A7B6E] font-medium truncate ml-1">
                           {pos.degreeInSign.toFixed(1)}°
@@ -1046,16 +1078,16 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                       </div>
                       <div className="mt-1">
                         <span className="font-semibold text-[#2C3E50] block text-[11px]">
-                          {planet}
+                          {localizedPlanetName}
                         </span>
                         <span className="text-[10px] text-[#E67E22] font-medium block truncate">
-                          {pos.sign} ({SIGN_DATA[pos.sign]?.code || ''})
+                          {localizedSignName} ({localizedSignCode})
                         </span>
                       </div>
                       <div className="mt-1 pt-1 border-t border-[#D4C5B9]/20 text-[9px] text-[#8A7B6E] flex justify-between">
-                        <span>H{pos.houseFromMoon} Moon</span>
+                        <span>H{pos.houseFromMoon} {pSt.hMoonPrefix}</span>
                         <span className={pos.classification === 'Supportive' ? 'text-emerald-700 font-bold' : pos.classification === 'Challenging' ? 'text-rose-700 font-bold' : 'text-amber-700'}>
-                          {pos.classification[0]}
+                          {pos.classification === 'Supportive' ? pSt.supportive[0] : pos.classification === 'Challenging' ? pSt.challenging[0] : pSt.neutral[0]}
                         </span>
                       </div>
                     </div>
@@ -1076,7 +1108,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-lg">📜</span>
             <h3 className="font-serif text-lg font-bold text-[#2C3E50]">
-              The Five Sacred Limbs (పంచాంగ ప్రధానాంగాలు)
+              {pSt.limbsSectionTitle}
             </h3>
           </div>
 
@@ -1087,22 +1119,22 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#E67E22] flex items-center gap-1.5">
-                    <Moon className="w-4 h-4" /> 1. Tithi (తిథి)
+                    <Moon className="w-4 h-4" /> {pSt.tithiTitle}
                   </span>
                   <span className="text-[10px] font-semibold bg-[#F5ECE1] text-[#684300] px-2 py-0.5 rounded-full">
-                    {panchangDetails.paksha}
+                    {translatePaksha(panchangDetails.paksha, activeLang as Lang)}
                   </span>
                 </div>
                 <h4 className="font-serif text-lg font-bold text-[#2C3E50]">
-                  {panchangDetails.tithi}
+                  {translateTithi(panchangDetails.tithi, activeLang as Lang)}
                 </h4>
                 <p className="text-xs text-[#8A7B6E] mt-1">
-                  Lunar phase determining auspicious energy for rites and daily ceremonies.
+                  {pSt.tithiDesc}
                 </p>
               </div>
               <div className="mt-3 pt-2.5 border-t border-[#D4C5B9]/20 flex justify-between text-[11px]">
-                <span className="text-[#8A7B6E]">Paksha:</span>
-                <span className="font-semibold text-[#2C3E50]">{panchangDetails.paksha}</span>
+                <span className="text-[#8A7B6E]">{pSt.pakshaLabel}</span>
+                <span className="font-semibold text-[#2C3E50]">{translatePaksha(panchangDetails.paksha, activeLang as Lang)}</span>
               </div>
             </div>
 
@@ -1111,22 +1143,22 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#E67E22] flex items-center gap-1.5">
-                    <Sun className="w-4 h-4" /> 2. Vaara (వారం)
+                    <Sun className="w-4 h-4" /> {pSt.vaaraTitle}
                   </span>
                   <span className="text-[10px] font-semibold bg-[#F5ECE1] text-[#684300] px-2 py-0.5 rounded-full">
-                    Solar Day
+                    {pSt.solarDay}
                   </span>
                 </div>
                 <h4 className="font-serif text-lg font-bold text-[#2C3E50]">
-                  {panchangDetails.vaara}
+                  {translateVaara(panchangDetails.vaara, activeLang as Lang)}
                 </h4>
                 <p className="text-xs text-[#8A7B6E] mt-1">
-                  {panchangDetails.vaaraTe} — governed by primary planetary energy.
+                  {pSt.vaaraDesc}
                 </p>
               </div>
               <div className="mt-3 pt-2.5 border-t border-[#D4C5B9]/20 flex justify-between text-[11px]">
-                <span className="text-[#8A7B6E]">Day Lord:</span>
-                <span className="font-semibold text-[#2C3E50]">{panchangDetails.vaara.split(' ')[0]}</span>
+                <span className="text-[#8A7B6E]">{pSt.dayLordLabel}</span>
+                <span className="font-semibold text-[#2C3E50]">{PLANET_NAMES_I18N[activeLang]?.[panchangDetails.vaara.split(' ')[0]] || panchangDetails.vaara.split(' ')[0]}</span>
               </div>
             </div>
 
@@ -1135,22 +1167,22 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#E67E22] flex items-center gap-1.5">
-                    <Star className="w-4 h-4" /> 3. Nakshatra (నక్షత్రం)
+                    <Star className="w-4 h-4" /> {pSt.nakshatraTitle}
                   </span>
                   <span className="text-[10px] font-semibold bg-[#F5ECE1] text-[#684300] px-2 py-0.5 rounded-full">
-                    Pada {panchangDetails.nakPada}
+                    {pSt.padaLabel} {panchangDetails.nakPada}
                   </span>
                 </div>
                 <h4 className="font-serif text-lg font-bold text-[#2C3E50]">
-                  {panchangDetails.nakshatra}
+                  {translateNakshatra(panchangDetails.nakshatra, activeLang as Lang)}
                 </h4>
                 <p className="text-xs text-[#8A7B6E] mt-1">
-                  Lunar constellation steering emotional mind and subconscious instincts.
+                  {pSt.nakshatraDesc}
                 </p>
               </div>
               <div className="mt-3 pt-2.5 border-t border-[#D4C5B9]/20 flex justify-between text-[11px]">
-                <span className="text-[#8A7B6E]">Star Lord:</span>
-                <span className="font-semibold text-[#E67E22]">{panchangDetails.nakLord}</span>
+                <span className="text-[#8A7B6E]">{pSt.starLordLabel}</span>
+                <span className="font-semibold text-[#E67E22]">{PLANET_NAMES_I18N[activeLang]?.[panchangDetails.nakLord] || panchangDetails.nakLord}</span>
               </div>
             </div>
 
@@ -1159,22 +1191,22 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#E67E22] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4" /> 4. Yoga (యోగం)
+                    <Sparkles className="w-4 h-4" /> {pSt.yogaTitle}
                   </span>
                   <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
-                    Shubha
+                    {pSt.shubhaYoga}
                   </span>
                 </div>
                 <h4 className="font-serif text-lg font-bold text-[#2C3E50]">
-                  {panchangDetails.yoga}
+                  {translateYoga(panchangDetails.yoga, activeLang as Lang)}
                 </h4>
                 <p className="text-xs text-[#8A7B6E] mt-1">
-                  Harmonious mathematical combination of the solar and lunar longitudes.
+                  {pSt.yogaDesc}
                 </p>
               </div>
               <div className="mt-3 pt-2.5 border-t border-[#D4C5B9]/20 flex justify-between text-[11px]">
-                <span className="text-[#8A7B6E]">Category:</span>
-                <span className="font-semibold text-emerald-700">Auspicious (శుభ యోగం)</span>
+                <span className="text-[#8A7B6E]">{pSt.categoryLabel}</span>
+                <span className="font-semibold text-emerald-700">{pSt.shubhaYoga}</span>
               </div>
             </div>
 
@@ -1183,22 +1215,22 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#E67E22] flex items-center gap-1.5">
-                    <Compass className="w-4 h-4" /> 5. Karana (కరణం)
+                    <Compass className="w-4 h-4" /> {pSt.karanaTitle}
                   </span>
                   <span className="text-[10px] font-semibold bg-[#F5ECE1] text-[#684300] px-2 py-0.5 rounded-full">
-                    Half-Tithi
+                    {pSt.halfTithi}
                   </span>
                 </div>
                 <h4 className="font-serif text-lg font-bold text-[#2C3E50]">
-                  {panchangDetails.karana}
+                  {translateKarana(panchangDetails.karana, activeLang as Lang)}
                 </h4>
                 <p className="text-xs text-[#8A7B6E] mt-1">
-                  Active division of lunar energy shaping the fruition of immediate deeds.
+                  {pSt.karanaDesc}
                 </p>
               </div>
               <div className="mt-3 pt-2.5 border-t border-[#D4C5B9]/20 flex justify-between text-[11px]">
-                <span className="text-[#8A7B6E]">Type:</span>
-                <span className="font-semibold text-[#2C3E50]">Chara Karana (చర కరణం)</span>
+                <span className="text-[#8A7B6E]">{pSt.typeLabel}</span>
+                <span className="font-semibold text-[#2C3E50]">{pSt.charaKarana}</span>
               </div>
             </div>
 
@@ -1206,23 +1238,23 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
             <div className="bg-white rounded-2xl p-4 border border-[#D4C5B9]/40 shadow-xs flex flex-col justify-between">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-[#E67E22] flex items-center gap-1.5 mb-2">
-                  <Clock className="w-4 h-4" /> Solar & Lunar Timings
+                  <Clock className="w-4 h-4" /> {pSt.solarLunarTitle}
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="bg-[#FDFBF7] p-2 rounded-lg border border-[#D4C5B9]/30">
-                    <span className="text-[10px] text-[#8A7B6E] block">🌅 Sunrise</span>
+                    <span className="text-[10px] text-[#8A7B6E] block">🌅 {pSt.sunrise}</span>
                     <span className="font-bold text-[#2C3E50]">{panchangDetails.sunrise}</span>
                   </div>
                   <div className="bg-[#FDFBF7] p-2 rounded-lg border border-[#D4C5B9]/30">
-                    <span className="text-[10px] text-[#8A7B6E] block">🌇 Sunset</span>
+                    <span className="text-[10px] text-[#8A7B6E] block">🌇 {pSt.sunset}</span>
                     <span className="font-bold text-[#2C3E50]">{panchangDetails.sunset}</span>
                   </div>
                   <div className="bg-[#FDFBF7] p-2 rounded-lg border border-[#D4C5B9]/30">
-                    <span className="text-[10px] text-[#8A7B6E] block">🌙 Moonrise</span>
+                    <span className="text-[10px] text-[#8A7B6E] block">🌙 {pSt.moonrise}</span>
                     <span className="font-bold text-[#2C3E50]">{panchangDetails.moonrise}</span>
                   </div>
                   <div className="bg-[#FDFBF7] p-2 rounded-lg border border-[#D4C5B9]/30">
-                    <span className="text-[10px] text-[#8A7B6E] block">🌑 Moonset</span>
+                    <span className="text-[10px] text-[#8A7B6E] block">🌑 {pSt.moonset}</span>
                     <span className="font-bold text-[#2C3E50]">{panchangDetails.moonset}</span>
                   </div>
                 </div>
@@ -1243,10 +1275,10 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
               <div>
                 <h3 className="font-serif font-bold text-base sm:text-lg text-emerald-950">
-                  Shubha Samayam (శుభ ముహూర్తములు)
+                  {pSt.shubhaSamayamTitle}
                 </h3>
                 <p className="text-[11px] text-emerald-700">
-                  Favorable celestial windows for starting ventures, travels, and pujas.
+                  {pSt.shubhaSamayamDesc}
                 </p>
               </div>
             </div>
@@ -1254,8 +1286,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
             <div className="space-y-2.5 text-xs">
               <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/60 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-emerald-950 block text-sm">Abhijit Muhurtham (అభిజిత్ ముహూర్తం)</span>
-                  <span className="text-[11px] text-emerald-700">Most auspicious midday window; eliminates all doshas.</span>
+                  <span className="font-bold text-emerald-950 block text-sm">{pSt.abhijitTitle}</span>
+                  <span className="text-[11px] text-emerald-700">{pSt.abhijitDesc}</span>
                 </div>
                 <span className="font-mono font-bold text-emerald-800 text-xs px-2.5 py-1 bg-white rounded-lg border border-emerald-300">
                   {panchangDetails.abhijit}
@@ -1264,8 +1296,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
 
               <div className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-200/40 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-emerald-950 block">Amrit Kalam (అమృత కాలం)</span>
-                  <span className="text-[11px] text-emerald-700">Nectar time for success in high-priority works.</span>
+                  <span className="font-bold text-emerald-950 block">{pSt.amritTitle}</span>
+                  <span className="text-[11px] text-emerald-700">{pSt.amritDesc}</span>
                 </div>
                 <span className="font-mono font-bold text-emerald-800 text-xs px-2 py-1 bg-white rounded-lg border border-emerald-300">
                   {panchangDetails.amritKalam}
@@ -1274,8 +1306,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
 
               <div className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-200/40 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-emerald-950 block">Brahma Muhurtham (బ్రహ్మ ముహూర్తం)</span>
-                  <span className="text-[11px] text-emerald-700">Pre-dawn window ideal for meditation and spiritual focus.</span>
+                  <span className="font-bold text-emerald-950 block">{pSt.brahmaTitle}</span>
+                  <span className="text-[11px] text-emerald-700">{pSt.brahmaDesc}</span>
                 </div>
                 <span className="font-mono font-bold text-emerald-800 text-xs px-2 py-1 bg-white rounded-lg border border-emerald-300">
                   {panchangDetails.brahmaMuhurta}
@@ -1290,10 +1322,10 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               <AlertTriangle className="w-5 h-5 text-rose-600" />
               <div>
                 <h3 className="font-serif font-bold text-base sm:text-lg text-rose-950">
-                  Ashubha Samayam (వర్జిత / అశుభ కాలాలు)
+                  {pSt.ashubhaSamayamTitle}
                 </h3>
                 <p className="text-[11px] text-rose-700">
-                  Inauspicious intervals to be avoided for new beginnings and signatures.
+                  {pSt.ashubhaSamayamDesc}
                 </p>
               </div>
             </div>
@@ -1301,8 +1333,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
             <div className="space-y-2.5 text-xs">
               <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200/60 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-rose-950 block text-sm">Rahu Kalam (రాహు కాలం)</span>
-                  <span className="text-[11px] text-rose-700">Avoid purchasing new assets or starting contracts.</span>
+                  <span className="font-bold text-rose-950 block text-sm">{pSt.rahuTitle}</span>
+                  <span className="text-[11px] text-rose-700">{pSt.rahuDesc}</span>
                 </div>
                 <span className="font-mono font-bold text-rose-800 text-xs px-2.5 py-1 bg-white rounded-lg border border-rose-300">
                   {panchangDetails.rahuKalam}
@@ -1311,8 +1343,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
 
               <div className="p-3 bg-rose-50/40 rounded-xl border border-rose-200/40 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-rose-950 block">Yamagandam (యమగండం)</span>
-                  <span className="text-[11px] text-rose-700">Associated with loss of energy and unwarranted delays.</span>
+                  <span className="font-bold text-rose-950 block">{pSt.yamagandamTitle}</span>
+                  <span className="text-[11px] text-rose-700">{pSt.yamagandamDesc}</span>
                 </div>
                 <span className="font-mono font-bold text-rose-800 text-xs px-2 py-1 bg-white rounded-lg border border-rose-300">
                   {panchangDetails.yamagandam}
@@ -1321,8 +1353,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
 
               <div className="p-3 bg-rose-50/40 rounded-xl border border-rose-200/40 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-rose-950 block">Gulika Kalam (గుళిక కాలం)</span>
-                  <span className="text-[11px] text-rose-700">Saturnian influence; repetition of initial results.</span>
+                  <span className="font-bold text-rose-950 block">{pSt.gulikaTitle}</span>
+                  <span className="text-[11px] text-rose-700">{pSt.gulikaDesc}</span>
                 </div>
                 <span className="font-mono font-bold text-rose-800 text-xs px-2 py-1 bg-white rounded-lg border border-rose-300">
                   {panchangDetails.gulika}
@@ -1331,8 +1363,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
 
               <div className="p-3 bg-rose-50/40 rounded-xl border border-rose-200/40 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-rose-950 block">Durmuhurtham (దుర్ముహూర్తం)</span>
-                  <span className="text-[11px] text-rose-700">Malefic time slot of the day.</span>
+                  <span className="font-bold text-rose-950 block">{pSt.durmuhurthamTitle}</span>
+                  <span className="text-[11px] text-rose-700">{pSt.durmuhurthamDesc}</span>
                 </div>
                 <span className="font-mono font-bold text-rose-800 text-xs px-2 py-1 bg-white rounded-lg border border-rose-300">
                   {panchangDetails.durmuhurtham.split(',')[0]}
@@ -1350,16 +1382,22 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D4C5B9]/30 pb-3">
             <div>
               <h3 className="font-serif text-lg font-bold text-[#2C3E50]">
-                Choghadiya Muhurthas (దిన & రాత్రి చోఘడియా)
+                {pSt.choghadiyaTitle}
               </h3>
               <p className="text-xs text-[#8A7B6E]">
-                Traditional 8-part daytime and 8-part nighttime Vedic action guide.
+                {pSt.choghadiyaDesc}
               </p>
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold flex-wrap">
-              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">Amrit / Shubh (Best)</span>
-              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">Chal (Neutral)</span>
-              <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300">Kaal / Rog (Avoid)</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
+                {activeLang === 'te' ? 'అమృత్ / శుభ్ (ఉత్తమం)' : activeLang === 'hi' ? 'अमृत / शुभ (सर्वोत्तम)' : 'Amrit / Shubh (Best)'}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                {activeLang === 'te' ? 'చల్ (మధ్యమం)' : activeLang === 'hi' ? 'चल (मध्यम)' : 'Chal (Neutral)'}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300">
+                {activeLang === 'te' ? 'కాల్ / రోగ్ (వర్జ్యం)' : activeLang === 'hi' ? 'काल / रोग (त्याज्य)' : 'Kaal / Rog (Avoid)'}
+              </span>
             </div>
           </div>
 
@@ -1368,7 +1406,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
             {/* Day Choghadiya */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-[#E67E22] uppercase tracking-wider flex items-center gap-1.5">
-                <Sun className="w-3.5 h-3.5" /> Day Choghadiya (Sunrise to Sunset)
+                <Sun className="w-3.5 h-3.5" /> {pSt.dayChoghadiya}
               </span>
               <div className="space-y-1.5 text-xs">
                 {choghadiyaSlots.daySlots.map((slot, i) => (
@@ -1386,7 +1424,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
             {/* Night Choghadiya */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-[#2563EB] uppercase tracking-wider flex items-center gap-1.5">
-                <Moon className="w-3.5 h-3.5" /> Night Choghadiya (Sunset to Sunrise)
+                <Moon className="w-3.5 h-3.5" /> {pSt.nightChoghadiya}
               </span>
               <div className="space-y-1.5 text-xs">
                 {choghadiyaSlots.nightSlots.map((slot, i) => (
@@ -1411,10 +1449,10 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
           <div className="flex items-center justify-between border-b border-[#D4C5B9]/30 pb-3">
             <div>
               <h3 className="font-serif text-lg font-bold text-[#2C3E50]">
-                Dina Hora (గ్రహ హోరలు — 24 Planetary Hours)
+                {pSt.dinaHoraTitle}
               </h3>
               <p className="text-xs text-[#8A7B6E]">
-                Successive planetary rulers governing each hour of the solar day and night.
+                {pSt.dinaHoraDesc}
               </p>
             </div>
           </div>
@@ -1430,14 +1468,14 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] font-bold text-[#8A7B6E]">Hora {idx + 1}</span>
+                  <span className="font-mono text-[10px] font-bold text-[#8A7B6E]">{pSt.horaWord} {idx + 1}</span>
                   <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${hora.nature === 'Auspicious' ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>
-                    {hora.nature}
+                    {hora.nature === 'Auspicious' ? pSt.auspicious : pSt.inauspicious}
                   </span>
                 </div>
                 <div className="mt-1.5">
                   <span className="font-bold text-sm block" style={{ color: PLANET_COLORS[hora.lord] }}>
-                    {hora.lord} Hora
+                    {PLANET_NAMES_I18N[activeLang]?.[hora.lord] || hora.lord} {pSt.horaWord}
                   </span>
                   <span className="text-[10px] text-[#8A7B6E] block font-mono">
                     {hora.time}
@@ -1465,17 +1503,17 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
 
             <div className="border-b border-[#D4C5B9]/30 pb-2">
               <h4 className="font-serif font-bold text-lg text-[#2C3E50]">
-                {selectedSign.signName} ({SIGN_DATA[selectedSign.signName]?.nameTe || ''})
+                {SIGN_NAMES_I18N[activeLang]?.[selectedSign.signName] || selectedSign.signName} ({SIGN_CODES_I18N[activeLang]?.[selectedSign.signName] || SIGN_DATA[selectedSign.signName]?.code || ''})
               </h4>
               <p className="text-xs text-[#E67E22] font-semibold">
-                Lord: {SIGN_DATA[selectedSign.signName]?.lord} • Element: {SIGN_DATA[selectedSign.signName]?.element}
+                {pSt.signLord}: {PLANET_NAMES_I18N[activeLang]?.[SIGN_DATA[selectedSign.signName]?.lord] || SIGN_DATA[selectedSign.signName]?.lord} • {pSt.signElement}: {ELEMENT_NAMES_I18N[activeLang]?.[SIGN_DATA[selectedSign.signName]?.element] || SIGN_DATA[selectedSign.signName]?.element}
               </p>
             </div>
 
             <div className="space-y-2">
-              <span className="text-xs text-[#8A7B6E] font-medium block">Transiting Planets in this Sign:</span>
+              <span className="text-xs text-[#8A7B6E] font-medium block">{pSt.transitingInSign}:</span>
               {selectedSign.planets.length === 0 ? (
-                <p className="text-xs text-[#8A7B6E] italic py-2">No planets currently transiting in {selectedSign.signName}.</p>
+                <p className="text-xs text-[#8A7B6E] italic py-2">{pSt.noPlanetsInSign} ({SIGN_NAMES_I18N[activeLang]?.[selectedSign.signName] || selectedSign.signName}).</p>
               ) : (
                 <div className="space-y-2">
                   {selectedSign.planets.map((abbr) => {
@@ -1483,6 +1521,8 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                       k => PLANET_ABBR[k] === abbr
                     );
                     const pos = fullPlanet ? transitSnapshot.positions[fullPlanet] : null;
+                    const localizedAbbr = fullPlanet ? (PLANET_ABBREVIATIONS_I18N[activeLang]?.[fullPlanet] || abbr) : abbr;
+                    const localizedName = fullPlanet ? (PLANET_NAMES_I18N[activeLang]?.[fullPlanet] || fullPlanet) : fullPlanet;
                     return (
                       <div key={abbr} className="p-2.5 bg-[#FDFBF7] rounded-xl border border-[#D4C5B9]/30 flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1490,15 +1530,15 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
                             className="font-mono font-bold text-sm px-2 py-0.5 rounded-md"
                             style={{ color: fullPlanet ? PLANET_COLORS[fullPlanet] : '#E67E22', backgroundColor: '#F5ECE1' }}
                           >
-                            {abbr}
+                            {localizedAbbr}
                           </span>
                           <div>
-                            <span className="font-semibold text-xs text-[#2C3E50] block">{fullPlanet}</span>
-                            <span className="text-[10px] text-[#8A7B6E]">Degree: {pos?.degreeInSign.toFixed(2)}°</span>
+                            <span className="font-semibold text-xs text-[#2C3E50] block">{localizedName}</span>
+                            <span className="text-[10px] text-[#8A7B6E]">{pSt.degreeLabel}: {pos?.degreeInSign.toFixed(2)}°</span>
                           </div>
                         </div>
                         <span className="text-xs font-bold text-[#E67E22]">
-                          H{pos?.houseFromMoon} from Moon
+                          H{pos?.houseFromMoon} {pSt.fromMoon}
                         </span>
                       </div>
                     );
@@ -1511,7 +1551,7 @@ export const PanchangamPage: React.FC<PanchangamPageProps> = ({
               onClick={() => setSelectedSign(null)}
               className="w-full py-2 bg-[#E67E22] text-white rounded-xl font-semibold text-xs hover:bg-[#E67E22]/90 transition-colors cursor-pointer"
             >
-              Close
+              {pSt.closeBtn}
             </button>
           </div>
         </div>

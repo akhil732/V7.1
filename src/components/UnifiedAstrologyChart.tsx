@@ -1,5 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { SIGN_MAP, PLANETS_SHORT } from './DivisionalChart';
+import { useLanguage } from '../context/LanguageContext';
+import {
+  CHART_LABELS,
+  PLANET_ABBREVIATIONS_I18N,
+  SIGN_CODES_I18N,
+  SIGN_NAMES_I18N,
+  PLANET_NAMES_I18N,
+} from '../lib/i18n/astrologicalTerms';
 
 export type ChartLayoutType = 'south' | 'north' | 'east';
 
@@ -11,6 +19,7 @@ export interface UnifiedAstrologyChartProps {
   defaultLayout?: ChartLayoutType;
   title?: string;
   subtitle?: string;
+  language?: 'en' | 'hi' | 'te';
   showLayoutSwitcher?: boolean;
   onSelectSign?: (signName: string, planets: any[]) => void;
 }
@@ -228,11 +237,20 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
   defaultLayout = 'east',
   title,
   subtitle,
+  language: propLanguage,
   showLayoutSwitcher = true,
   onSelectSign
 }) => {
   const [layout, setLayout] = useState<ChartLayoutType>(defaultLayout);
   const [selectedCell, setSelectedCell] = useState<{ signNumber: number; signName: string; planets: string[] } | null>(null);
+
+  const langContext = useLanguage();
+  const activeLang = propLanguage || langContext?.language || 'en';
+  const chartLabels = CHART_LABELS[activeLang] || CHART_LABELS.en;
+  const planetAbbrs = PLANET_ABBREVIATIONS_I18N[activeLang] || PLANET_ABBREVIATIONS_I18N.en;
+  const signCodes = SIGN_CODES_I18N[activeLang] || SIGN_CODES_I18N.en;
+  const signNames = SIGN_NAMES_I18N[activeLang] || SIGN_NAMES_I18N.en;
+  const planetNames = PLANET_NAMES_I18N[activeLang] || PLANET_NAMES_I18N.en;
 
   // Extract divisional chart or transit data based on chartType
   const chartPlanetsMap = useMemo(() => {
@@ -247,7 +265,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
         todayGochara.planets.forEach((pObj: any) => {
           const sIndex = SIGN_NAME_TO_INDEX[pObj.sign] || 1;
           const pName = pObj.planet;
-          const pAbbr = PLANET_ABBREVIATIONS[pName] || pName.slice(0, 2);
+          const pAbbr = planetAbbrs[pName] || PLANET_ABBREVIATIONS[pName] || pName.slice(0, 2);
           if (map[sIndex]) {
             map[sIndex].planets.push({
               name: pName,
@@ -263,7 +281,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
       if (transitSnapshot?.positions) {
         Object.entries(transitSnapshot.positions).forEach(([pKey, pos]: [string, any]) => {
           const sIndex = SIGN_NAME_TO_INDEX[pos.sign] || 1;
-          const pAbbr = PLANET_ABBREVIATIONS[pKey] || pKey.slice(0, 2);
+          const pAbbr = planetAbbrs[pKey] || PLANET_ABBREVIATIONS[pKey] || pKey.slice(0, 2);
           if (map[sIndex]) {
             map[sIndex].planets.push({
               name: pKey,
@@ -291,7 +309,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
       const gData = targetChart[g] || (g === 'Ascendant' ? targetChart.Lagna : undefined);
       if (gData && gData.sign) {
         const sIndex = SIGN_NAME_TO_INDEX[gData.sign] || 1;
-        const abbr = g === 'Ascendant' || g === 'Lagna' ? 'Asc' : (PLANET_ABBREVIATIONS[g] || g.slice(0, 2));
+        const abbr = planetAbbrs[g] || (g === 'Ascendant' || g === 'Lagna' ? (planetAbbrs.Ascendant || 'Asc') : (PLANET_ABBREVIATIONS[g] || g.slice(0, 2)));
         const isRetro = g !== 'Ascendant' && g !== 'Lagna' && retrogradePlanets.includes(g);
         if (map[sIndex]) {
           map[sIndex].planets.push({
@@ -305,7 +323,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
     });
 
     return map;
-  }, [chartType, horoscopeData, todayGochara, transitSnapshot]);
+  }, [chartType, horoscopeData, todayGochara, transitSnapshot, planetAbbrs]);
 
   const ascendantSignName = useMemo(() => {
     if (chartType === 'Transit') return 'Aries';
@@ -318,15 +336,15 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
   const ascendantSignIndex = SIGN_NAME_TO_INDEX[ascendantSignName] || 1;
 
   const displayTitle = title || (
-    chartType === 'D1' ? 'D1 Rasi Natal Chart' :
-    chartType === 'D9' ? 'D9 Navamsha Chart' :
-    'Live Gochara Transit Chart'
+    chartType === 'D1' ? chartLabels.d1Title :
+    chartType === 'D9' ? chartLabels.d9Title :
+    chartLabels.transitTitle
   );
 
   const displaySubtitle = subtitle || (
-    chartType === 'D1' ? 'Primary Natal Chart • Bodily Incarnation & Life Path' :
-    chartType === 'D9' ? 'Navamsha 9th Harmonic • Dharma, Soul Purpose & Marital Synergy' :
-    'Current Real-Time Planetary Transit Transits'
+    chartType === 'D1' ? chartLabels.d1Subtitle :
+    chartType === 'D9' ? chartLabels.d9Subtitle :
+    chartLabels.transitSubtitle
   );
 
   const handleCellClick = (signNumber: number) => {
@@ -335,7 +353,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
     setSelectedCell({
       signNumber,
       signName: info.name,
-      planets: planets.map(p => `${p.name}${p.isRetro ? ' (Rx)' : ''}${p.deg !== undefined ? ` ${p.deg.toFixed(1)}°` : ''}`)
+      planets: planets.map(p => `${planetNames[p.name] || p.name}${p.isRetro ? ' (Rx)' : ''}${p.deg !== undefined ? ` ${p.deg.toFixed(1)}°` : ''}`)
     });
     if (onSelectSign) {
       onSelectSign(info.name, planets);
@@ -375,7 +393,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                   : 'text-[#8A7B6E] hover:text-[#2C3E50]'
               }`}
             >
-              South
+              {chartLabels.south}
             </button>
             <button
               type="button"
@@ -386,7 +404,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                   : 'text-[#8A7B6E] hover:text-[#2C3E50]'
               }`}
             >
-              North
+              {chartLabels.north}
             </button>
             <button
               type="button"
@@ -397,7 +415,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                   : 'text-[#8A7B6E] hover:text-[#2C3E50]'
               }`}
             >
-              East
+              {chartLabels.east}
             </button>
           </div>
         )}
@@ -450,10 +468,10 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                   fill="#E67E22" 
                   fontSize="11" 
                   fontWeight="700" 
-                  letterSpacing="0.2em" 
+                  letterSpacing="0.1em" 
                   fontFamily="'Public Sans', sans-serif"
                 >
-                  {chartType === 'D1' ? 'RASI (D1)' : chartType === 'D9' ? 'NAVAMSA (D9)' : 'GOCHARA'}
+                  {chartType === 'D1' ? chartLabels.rasiD1 : chartType === 'D9' ? chartLabels.navamsaD9 : chartLabels.gochara}
                 </text>
                 <text 
                   x="140" 
@@ -464,7 +482,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                   fontWeight="600" 
                   fontFamily="'Public Sans', sans-serif"
                 >
-                  Lagna: {ascendantSignName}
+                  {chartLabels.lagnaPrefix} {signNames[ascendantSignName] || ascendantSignName}
                 </text>
               </g>
 
@@ -508,7 +526,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                       fontWeight="700" 
                       fontFamily="'Public Sans', sans-serif"
                     >
-                      {info.code} {isLagna && '★'}
+                      {signCodes[info.name] || info.code} {isLagna && '★'}
                     </text>
 
                     {/* Planets */}
@@ -530,7 +548,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                           x={x + 63} 
                           y={y + 46} 
                           textAnchor="end" 
-                          fill={planets[0].name === 'Ascendant' ? '#BA1A1A' : '#E67E22'} 
+                          fill={planets[0].name === 'Ascendant' || planets[0].name === 'Lagna' ? '#BA1A1A' : '#E67E22'} 
                           fontSize="11" 
                           fontWeight="700" 
                           fontFamily="'JetBrains Mono', monospace"
@@ -541,7 +559,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                           x={x + 63} 
                           y={y + 61} 
                           textAnchor="end" 
-                          fill={planets[1].name === 'Ascendant' ? '#BA1A1A' : '#E67E22'} 
+                          fill={planets[1].name === 'Ascendant' || planets[1].name === 'Lagna' ? '#BA1A1A' : '#E67E22'} 
                           fontSize="11" 
                           fontWeight="700" 
                           fontFamily="'JetBrains Mono', monospace"
@@ -555,7 +573,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                           x={x + 63} 
                           y={y + 35} 
                           textAnchor="end" 
-                          fill={planets[0].name === 'Ascendant' ? '#BA1A1A' : '#E67E22'} 
+                          fill={planets[0].name === 'Ascendant' || planets[0].name === 'Lagna' ? '#BA1A1A' : '#E67E22'} 
                           fontSize="9" 
                           fontWeight="700" 
                           fontFamily="'JetBrains Mono', monospace"
@@ -566,7 +584,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                           x={x + 63} 
                           y={y + 48} 
                           textAnchor="end" 
-                          fill={planets[1].name === 'Ascendant' ? '#BA1A1A' : '#E67E22'} 
+                          fill={planets[1].name === 'Ascendant' || planets[1].name === 'Lagna' ? '#BA1A1A' : '#E67E22'} 
                           fontSize="9" 
                           fontWeight="700" 
                           fontFamily="'JetBrains Mono', monospace"
@@ -633,7 +651,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                       fontWeight="600"
                       fontFamily="'Public Sans', sans-serif"
                     >
-                      H{houseNum}
+                      {chartLabels.housePrefix}{houseNum}
                     </text>
 
                     {/* Rashi number */}
@@ -658,7 +676,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                           x={layoutCoords.center.x}
                           y={yOffset}
                           textAnchor="middle"
-                          fill={p.name === 'Ascendant' ? '#BA1A1A' : '#2C3E50'}
+                          fill={p.name === 'Ascendant' || p.name === 'Lagna' ? '#BA1A1A' : '#2C3E50'}
                           fontSize="10"
                           fontWeight="700"
                           fontFamily="'JetBrains Mono', monospace"
@@ -706,10 +724,10 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                 fill="#E67E22" 
                 fontSize="12" 
                 fontWeight="700" 
-                letterSpacing="0.2em" 
+                letterSpacing="0.1em" 
                 fontFamily="'Public Sans', sans-serif"
               >
-                {chartType === 'D1' ? 'RASI (D1)' : chartType === 'D9' ? 'NAVAMSA' : 'GOCHARA'}
+                {chartType === 'D1' ? chartLabels.rasiD1 : chartType === 'D9' ? chartLabels.navamsaD9 : chartLabels.gochara}
               </text>
               <text 
                 x="200" 
@@ -720,7 +738,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                 fontWeight="600" 
                 fontFamily="'Public Sans', sans-serif"
               >
-                Lagna: {ascendantSignName}
+                {chartLabels.lagnaPrefix} {signNames[ascendantSignName] || ascendantSignName}
               </text>
 
               {/* 12 Signs in East Indian Layout */}
@@ -766,7 +784,7 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
                       fontWeight="700" 
                       fontFamily="'Public Sans', sans-serif"
                     >
-                      {info.code} {isLagna && '★'}
+                      {signCodes[info.name] || info.code} {isLagna && '★'}
                     </text>
 
                     {/* Planet labels */}
@@ -855,16 +873,16 @@ export const UnifiedAstrologyChart: React.FC<UnifiedAstrologyChartProps> = ({
         {selectedCell && (
           <div className="mt-4 p-3 bg-white border border-[#D4C5B9]/60 rounded-xl shadow-xs w-full max-w-[340px] flex items-center justify-between text-xs animate-in fade-in duration-150">
             <div>
-              <span className="font-bold text-[#2C3E50]">{selectedCell.signName} (Rasi {selectedCell.signNumber})</span>
+              <span className="font-bold text-[#2C3E50]">{signNames[selectedCell.signName] || selectedCell.signName} ({chartLabels.rasiWord} {selectedCell.signNumber})</span>
               <p className="text-[#8A7B6E] text-[11px] mt-0.5">
-                {selectedCell.planets.length > 0 ? selectedCell.planets.join(', ') : 'No planets in this sign'}
+                {selectedCell.planets.length > 0 ? selectedCell.planets.join(', ') : chartLabels.noPlanetsInSign}
               </p>
             </div>
             <button
               onClick={() => setSelectedCell(null)}
               className="text-[#8A7B6E] hover:text-[#2C3E50] text-xs px-2 py-1 bg-[#F5ECE1] rounded-lg cursor-pointer"
             >
-              Dismiss
+              {chartLabels.dismiss}
             </button>
           </div>
         )}

@@ -74,9 +74,36 @@ const apiRateLimiter = new RateLimiter(120, 10);
 const geminiCircuitBreaker = new CircuitBreaker(5, 2, 45000);
 const modelRouter = new ModelRoutingService();
 
-const PRIMARY_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.1-pro-preview', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.7-flash'];
+const PRIMARY_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
 
 const quotaExhaustedModels = new Map<string, number>();
+
+function parseRetryDelayMs(errMsg: string): number {
+  if (!errMsg) return 30000;
+  // If daily / free tier quota limit reached (e.g. GenerateRequestsPerDayPerProjectPerModel-FreeTier)
+  if (
+    errMsg.includes('GenerateRequestsPerDayPerProjectPerModel') ||
+    errMsg.includes('free_tier_requests') ||
+    errMsg.includes('limit: 20') ||
+    errMsg.includes('limit: 0') ||
+    errMsg.includes('paid_tier')
+  ) {
+    return 3600000; // 1 hour cooldown for daily free-tier model quota exhaustion
+  }
+  // Look for "retry in 15.833850339s" or "retryDelay: 15s"
+  const matchSec = errMsg.match(/retry\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*s/i) || errMsg.match(/retryDelay["':\s]+(\d+(?:\.\d+)?)\s*s?/i);
+  if (matchSec && matchSec[1]) {
+    const sec = parseFloat(matchSec[1]);
+    if (!isNaN(sec) && sec > 0) {
+      return Math.min(Math.ceil(sec * 1000) + 2000, 60000); // capped at 60s
+    }
+  }
+  // If 503 high demand spike ("Spikes in demand are usually temporary. Please try again later.")
+  if (errMsg.includes('503') || errMsg.toLowerCase().includes('high demand') || errMsg.toLowerCase().includes('unavailable')) {
+    return 15000; // 15 seconds temporary cooldown
+  }
+  return 30000; // Default 30 seconds
+}
 
 function isModelQuotaExhausted(modelName: string): boolean {
   const until = quotaExhaustedModels.get(modelName);
@@ -88,8 +115,9 @@ function isModelQuotaExhausted(modelName: string): boolean {
   return true;
 }
 
-function markModelQuotaExhausted(modelName: string, durationMs: number = 3600000) {
-  quotaExhaustedModels.set(modelName, Date.now() + durationMs);
+function markModelQuotaExhausted(modelName: string, durationMs?: number) {
+  const duration = durationMs !== undefined ? durationMs : 20000;
+  quotaExhaustedModels.set(modelName, Date.now() + duration);
 }
 
 function isModelErrorOrQuota(errMsg: string): boolean {
@@ -140,11 +168,28 @@ async function generateContentWithRetryAndFallback(
   }
 ): Promise<{ text: string | null; response?: any }> {
   const candidateList = options.candidateModels || PRIMARY_MODELS;
-  const availableModels = candidateList.filter(m => !isModelQuotaExhausted(m));
-  const models = availableModels.length > 0 ? availableModels : candidateList;
+  let availableModels = candidateList.filter(m => !isModelQuotaExhausted(m));
+
+  // If all candidate models are temporarily in cooldown, reset expired and guarantee at least primary
+  if (availableModels.length === 0) {
+    const now = Date.now();
+    for (const m of candidateList) {
+      const until = quotaExhaustedModels.get(m) || 0;
+      if (until <= now) {
+        quotaExhaustedModels.delete(m);
+      }
+    }
+    availableModels = candidateList.filter(m => !isModelQuotaExhausted(m));
+    if (availableModels.length === 0) {
+      const first = candidateList[0] || 'gemini-3.8-flash';
+      quotaExhaustedModels.delete(first);
+      availableModels = [first];
+    }
+  }
+
   const maxRetriesPerModel = 2;
 
-  for (const modelName of models) {
+  for (const modelName of availableModels) {
     for (let attempt = 0; attempt < maxRetriesPerModel; attempt++) {
       try {
         const config: any = {};
@@ -161,22 +206,24 @@ async function generateContentWithRetryAndFallback(
         });
 
         if (response?.text) {
+          quotaExhaustedModels.delete(modelName);
           return { text: response.text, response };
         }
       } catch (err: any) {
         const errMsg = err?.message || String(err);
         if (isModelErrorOrQuota(errMsg)) {
-          markModelQuotaExhausted(modelName);
-          console.warn(`[Gemini API] Model ${modelName} unavailable/exhausted (${errMsg}). Cooldown marked, cascading to next candidate model.`);
+          const delayMs = parseRetryDelayMs(errMsg);
+          markModelQuotaExhausted(modelName, delayMs);
+          console.info(`[Gemini API] Model ${modelName} transiently unavailable (${errMsg.split('\n')[0]}). Cooldown ${Math.round(delayMs / 1000)}s marked, cascading to next model.`);
           break; // Immediately cascade to next candidate model
         }
 
         if (attempt < maxRetriesPerModel - 1) {
-          await sleep((attempt + 1) * 600);
+          await sleep((attempt + 1) * 500);
           continue;
         } else {
-          markModelQuotaExhausted(modelName);
-          console.warn(`[Gemini API] Model ${modelName} failed after ${maxRetriesPerModel} attempts:`, errMsg);
+          markModelQuotaExhausted(modelName, 20000);
+          console.info(`[Gemini API] Model ${modelName} completed retry attempts:`, errMsg.split('\n')[0]);
           break; // proceed to next model in cascade
         }
       }
@@ -187,6 +234,11 @@ async function generateContentWithRetryAndFallback(
 }
 
 app.use(express.json({ limit: '10mb' }));
+
+// Health check endpoint for ingress & diagnostics
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
 
 // Request tracing middleware
 app.use((req, res, next) => {
@@ -403,7 +455,8 @@ Provide a detailed, search-grounded astrological analysis addressing the user qu
       } catch (mErr: any) {
         const mErrMsg = mErr?.message || String(mErr);
         if (isModelErrorOrQuota(mErrMsg)) {
-          markModelQuotaExhausted(modelName);
+          const delayMs = parseRetryDelayMs(mErrMsg);
+          markModelQuotaExhausted(modelName, delayMs);
         }
         // Fall back cleanly to next model or ungrounded mode
       }
@@ -550,7 +603,8 @@ app.post('/api/advanced-ai/stream', async (req, res) => {
       } catch (streamErr: any) {
         const sErrMsg = streamErr?.message || String(streamErr);
         if (isModelErrorOrQuota(sErrMsg)) {
-          markModelQuotaExhausted(modelName);
+          const delayMs = parseRetryDelayMs(sErrMsg);
+          markModelQuotaExhausted(modelName, delayMs);
         }
         console.warn(`Streaming failed with model ${modelName}:`, sErrMsg);
       }
@@ -1149,28 +1203,33 @@ app.post('/api/vagdhenu/detect-meter', async (req, res) => {
   }
 });
 
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
-}
-
 app.post('/api/gochara', (req, res) => {
   res.json({ data: { planets: [] } });
 });
+
+async function startServer() {
+  try {
+    if (process.env.NODE_ENV !== 'production') {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
 startServer();

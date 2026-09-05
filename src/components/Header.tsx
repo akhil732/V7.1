@@ -1,6 +1,8 @@
 import React from 'react';
 import { Heart, Sparkles, Bot } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { HEADER_LABELS, ASTROLOGICAL_TERMS_MAP, Lang } from '../lib/i18n/astrologicalTerms';
 import { UserAvatar } from './UserAvatar';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { DarkModeToggle } from './DarkModeToggle';
@@ -14,6 +16,10 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ logo, onNavigateHome, onSetView, currentView }) => {
   const { user, isAuthenticated } = useAuth();
+  const { language } = useLanguage();
+  const activeLang = (language as Lang) || 'en';
+  const headerLabels = HEADER_LABELS[activeLang] || HEADER_LABELS.en;
+  const t = (k: string) => ASTROLOGICAL_TERMS_MAP[k]?.[activeLang] || ASTROLOGICAL_TERMS_MAP[k]?.en || k;
 
   return (
     <header className="border-b border-ds-outline bg-ds-surface sticky top-0 z-40">
@@ -21,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({ logo, onNavigateHome, onSetView,
         <button 
           className="flex items-center gap-2.5 cursor-pointer min-w-0 bg-transparent border-none p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ds-primary rounded-md" 
           onClick={onNavigateHome}
-          aria-label="Go to Home"
+          aria-label={headerLabels.backToHome}
         >
           <img 
             src={logo} 
@@ -32,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ logo, onNavigateHome, onSetView,
           />
           <div className="truncate text-left">
             <span className="text-sm sm:text-base md:text-lg font-serif font-bold tracking-wider text-ds-secondary transition-colors whitespace-nowrap block">
-              JYOTHISHYA SANATHANAM
+              {headerLabels.title.toUpperCase()}
             </span>
           </div>
         </button>
@@ -49,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ logo, onNavigateHome, onSetView,
             }`}
           >
             <Bot className={`w-3.5 h-3.5 ${currentView === 'advanced-ai' ? 'text-ds-primary' : ''}`} aria-hidden="true" />
-            <span className="inline">Advanced AI</span>
+            <span className="inline">{t('ai_consultation')}</span>
           </button>
 
           <button
@@ -62,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({ logo, onNavigateHome, onSetView,
             }`}
           >
             <Sparkles className={`w-3.5 h-3.5 ${currentView === 'kp-analysis' ? 'text-ds-primary' : ''}`} aria-hidden="true" />
-            <span className="hidden sm:inline">KP Analysis</span>
+            <span className="hidden sm:inline">{t('kp_analysis')}</span>
           </button>
 
           <button
@@ -75,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({ logo, onNavigateHome, onSetView,
             }`}
           >
             <Heart className={`w-3.5 h-3.5 ${currentView === 'marriage-match' ? 'text-ds-error-crimson' : ''}`} aria-hidden="true" />
-            <span className="hidden sm:inline">Marriage Match</span>
+            <span className="hidden sm:inline">{t('marriage_match')}</span>
           </button>
 
           {isAuthenticated ? (
