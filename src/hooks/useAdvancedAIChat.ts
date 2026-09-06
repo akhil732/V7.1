@@ -16,6 +16,8 @@ import { computeInterplanetaryRelations } from '../lib/engines/InterplanetaryRel
 import { calculateActiveDasha } from '../lib/engines/DashaEngine';
 import { ASTROLOGICAL_TERMS_MAP } from '../lib/i18n/astrologicalTerms';
 import { normalizeTeluguScript } from '../lib/i18n/scriptNormalizer';
+import { buildGuardrailedIPBlock } from '../lib/guardrails/InterplanetaryPromptBuilder';
+import { validateInterplanetaryClaims } from '../lib/guardrails/InterplanetaryClaimValidator';
 
 interface UseAdvancedAIChatOptions {
   birthData: BirthDetails;
@@ -33,12 +35,12 @@ export interface ChatSession {
 
 // ─── Build clean system prompt from MD source of truth ──────────────────────
 
-function buildCleanSystemPrompt(
+export function buildCleanSystemPromptData(
   birthData: BirthDetails,
   horoscopeData: any,
   userQuery: string,
   language: 'en' | 'hi' | 'te'
-): string {
+): { systemPrompt: string; ipRelations: any } {
   const langName = language === 'te' ? 'Telugu' : language === 'hi' ? 'Hindi' : 'English';
   const now = new Date();
 
@@ -103,6 +105,9 @@ function buildCleanSystemPrompt(
     pdTransitSign: pdPlanet ? transitSigns[pdPlanet] || pdSign : undefined
   });
 
+  // Guardrailed pre-prompt block that explicitly forbids rulership/natural-zodiac reasoning
+  const guardrailedIPBlock = buildGuardrailedIPBlock(ipRelations);
+
   // ── 4. Full natal chart markdown (source of truth) ─────────────────────
   const birthChartMd = generateVedicBirthChartMarkdown(birthData, horoscopeData, transitData);
 
@@ -118,7 +123,7 @@ function buildCleanSystemPrompt(
   }, {} as Record<string, string>);
   const glossaryBlock = JSON.stringify(glossary, null, 2);
 
-  return `\
+  const systemPrompt = `\
 ═══════════════════════════════════════════════════════════════════
 NATAL CHART — SOURCE OF TRUTH (IMMUTABLE)
 ═══════════════════════════════════════════════════════════════════
@@ -136,7 +141,7 @@ THREE-LAYER VEDIC REASONING (PRE-COMPUTED GROUND TRUTH)
 
 ${vedicReasoningMd}
 
-${ipRelations.promptBlock}
+${guardrailedIPBlock}
 
 ═══════════════════════════════════════════════════════════════════
 RESPONSE INSTRUCTIONS
@@ -147,8 +152,8 @@ You are an expert Vedic (Parashari) astrologer. Follow these rules:
 1. LANGUAGE: Write your ENTIRE response in ${langName}. Use exact terminology below.
 2. FRAMEWORK: Structure every answer around the three layers:
    • Layer 1 — నాటల్ ప్రామిస్ (Natal Promise): D-1 Rasi placements, house lords, dignities.
-   • Layer 2 — దశ-అంతర్దశ (Dasha-Antardasha): Current MD/AD activation, house connection, AND whether MD-AD lords are in Dwirdwadasha/Shadaṣṭaka relation.
-   • Layer 3 — గోచార (Gochara): Live transits of ALL 9 planets from Moon sign — their house positions, AND whether any transit planet is in Dwirdwadasha/Shadaṣṭaka with natal planets or active Dasha lords.
+   • Layer 2 — దశ-అంతర్దశ (Dasha-Antardasha): Current MD/AD activation, house connection, and whether active MD/AD/PD lords are in Dwirdwadasha/Shadaṣṭaka relation. IMPORTANT: Do NOT check or compare between natal promise planets and Dasha-Antardasha planets in this section.
+   • Layer 3 — గోచార (Transit) ప్రభావం: Live transits of ALL 9 planets from Moon sign. IMPORTANT: The MAIN planets to analyze in Gochara / Transit are those planets involved in BOTH Natal Promise and Dasha-Antardasha.
 3. DWIRDWADASHA / SHADAṢṬAKA RULE: When either is present (pre-computed above), you MUST:
    a. State the relation explicitly and its impact.
    b. Qualify predictions — results will be delayed (2-12) or blocked/reversed (6-8).
@@ -163,6 +168,17 @@ You are an expert Vedic (Parashari) astrologer. Follow these rules:
 ASTROLOGICAL TERMINOLOGY (use exact forms in ${langName}):
 ${glossaryBlock}
 `;
+
+  return { systemPrompt, ipRelations };
+}
+
+function buildCleanSystemPrompt(
+  birthData: BirthDetails,
+  horoscopeData: any,
+  userQuery: string,
+  language: 'en' | 'hi' | 'te'
+): string {
+  return buildCleanSystemPromptData(birthData, horoscopeData, userQuery, language).systemPrompt;
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -377,7 +393,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
 
     try {
       // ── Build clean system prompt from MD source of truth ──
-      const systemPrompt = buildCleanSystemPrompt(birthData, horoscopeData, text, language);
+      const { systemPrompt, ipRelations } = buildCleanSystemPromptData(birthData, horoscopeData, text, language);
 
       const res = await fetch('/api/advanced-ai/stream', {
         method: 'POST',
@@ -387,7 +403,8 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
           userQuery: text,
           conversationHistory: newHistory,
           persona: activePersona,
-          language: language || 'en'
+          language: language || 'en',
+          ipRelations
         }),
         signal: abortControllerRef.current.signal
       });
@@ -441,6 +458,14 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
           language: language || 'en'
         });
         accumulated = fallbackRes.content;
+      }
+
+      // ── Post-generation guardrail validation ──
+      if (accumulated && ipRelations) {
+        const validation = validateInterplanetaryClaims(accumulated, ipRelations);
+        if (!validation.valid) {
+          console.warn('[Guardrail] Claim breach detected in model response:', validation.breaches);
+        }
       }
 
       const assistantMessage: ConversationMessage = {

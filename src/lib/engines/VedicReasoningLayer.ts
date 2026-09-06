@@ -1475,8 +1475,10 @@ ${futureLines}
 
 INSTRUCTIONS FOR GENERATION:
 1. You MUST adopt this three-layer structure in your final output: Natal Promise → Dasha Activation → Transit Confirmation.
-2. If the user asks 'when', cite the future windows provided above.
-3. If the user asks 'why', explain the Trika afflictions or combust karakas noted above without moral judgment.
-4. Include the validation question so the client can verify birth chart accuracy from past events.
+2. In Section 2. దశ-అంతర్దశ (Dasha-Antardasha): Analyze active MD/AD/PD lords, house activation, and relations between Dasha lords. Do NOT check or compare between natal promise planets and Dasha-Antardasha planets.
+3. In Section గోచార (Transit) ప్రభావం: Analyze live transits from Moon sign. The MAIN planets to analyze in Gochara / Transit are those planets present in BOTH Natal Promise and Dasha-Antardasha.
+4. If the user asks 'when', cite the future windows provided above.
+5. If the user asks 'why', explain the Trika afflictions or combust karakas noted above without moral judgment.
+6. Include the validation question so the client can verify birth chart accuracy from past events.
 ═══════════════════════════════════════════════════════════════════`;
 }
