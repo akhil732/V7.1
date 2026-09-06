@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GroundTruthInspectorDrawer } from './AdvancedAI/GroundTruthInspectorDrawer';
 import ReactMarkdown from 'react-markdown';
+import { ReasoningChainDisclosure } from './AdvancedAITab/ReasoningChainDisclosure';
 import { Copy, Check, Search, MessageSquare, AlertCircle } from 'lucide-react';
 
 interface AdvancedAITabProps {
@@ -452,17 +453,20 @@ function UserBubble({ text, C }: { text: string; C: ReturnType<typeof getColors>
 function AssistantResponseCard({
   msg,
   C,
+  language = 'te',
   onOpenInspector,
   onSendFollowUp
 }: {
   msg: any;
   C: ReturnType<typeof getColors>;
+  language?: 'en' | 'hi' | 'te';
   onOpenInspector?: () => void;
   onSendFollowUp?: (text: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const metadata = msg.metadata || {};
   const kpGt = metadata.kpGroundTruths;
+  const vedicCtx = metadata.vedicReasoningContext;
   const domain = metadata.queryDomain || (kpGt?.domain) || 'GENERAL';
   const confidence = metadata.confidence || (kpGt?.confidenceScore) || 85;
 
@@ -553,6 +557,15 @@ function AssistantResponseCard({
           </ReactMarkdown>
         </div>
 
+        {/* ─── Vedic Three-Layer Reasoning Framework Disclosure ─── */}
+        {vedicCtx && (
+          <ReasoningChainDisclosure
+            context={vedicCtx}
+            messageId={`msg_${msg.timestamp ? new Date(msg.timestamp).getTime() : Math.random()}`}
+            language={language}
+          />
+        )}
+
         {/* Action Toolbar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: `1px solid ${C.border}`, marginTop: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -594,11 +607,13 @@ function AssistantResponseCard({
 function AssistantBubble({
   msg,
   C,
+  language = 'te',
   onOpenInspector,
   onSendFollowUp
 }: {
   msg: any;
   C: ReturnType<typeof getColors>;
+  language?: 'en' | 'hi' | 'te';
   onOpenInspector?: () => void;
   onSendFollowUp?: (text: string) => void;
 }) {
@@ -617,7 +632,13 @@ function AssistantBubble({
     <div style={{ display: 'flex', gap: 10, width: '100%' }}>
       <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.emptyIconBg, border: `1px solid ${C.emptyIconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 4, fontSize: 13, color: C.accent }}>✦</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <AssistantResponseCard msg={msg} C={C} onOpenInspector={onOpenInspector} onSendFollowUp={onSendFollowUp} />
+        <AssistantResponseCard
+          msg={msg}
+          C={C}
+          language={language}
+          onOpenInspector={onOpenInspector}
+          onSendFollowUp={onSendFollowUp}
+        />
       </div>
     </div>
   );
@@ -997,6 +1018,7 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
                   key={idx}
                   msg={msg}
                   C={C}
+                  language={language || 'te'}
                   onOpenInspector={() => setInspectorOpen(true)}
                   onSendFollowUp={handleSend}
                 />
@@ -1012,6 +1034,7 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
                   metadata: { persona: 'quick', queryDomain: 'STREAMING' }
                 }}
                 C={C}
+                language={language || 'te'}
               />
             )}
 

@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { Bot, User, Copy, Check, Search, MessageSquare, Globe, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConversationMessage } from '../../lib/services/EnhancedGeminiConsultationService';
+import { ReasoningChainDisclosure } from './ReasoningChainDisclosure';
 
 interface MessageBubbleProps {
   message: ConversationMessage;
+  language?: 'en' | 'hi' | 'te';
   onOpenInspector?: () => void;
   onSendFollowUp?: (queryText: string) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
+  language = 'en',
   onOpenInspector,
   onSendFollowUp
 }) => {
@@ -76,6 +79,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               >
                 {message.content}
               </ReactMarkdown>
+
+              {message.metadata?.vedicReasoningContext && (
+                <ReasoningChainDisclosure
+                  context={message.metadata.vedicReasoningContext}
+                  messageId={(message as any).id || `msg_${message.timestamp ? new Date(message.timestamp).getTime() : Math.random()}`}
+                  language={language}
+                />
+              )}
 
               {/* Metadata Badges & Follow-up Actions */}
               <div className="pt-3 border-t border-ds-secondary/15 mt-3 space-y-2">

@@ -24,6 +24,7 @@ export interface ConversationMessage {
     sources?: Array<{ title: string; url: string }>;
     vedicGroundTruths?: VedicGroundTruths;
     kpGroundTruths?: VedicGroundTruths; // backward compatibility alias
+    vedicReasoningContext?: any;
     persona?: ConsultationPersona;
   };
 }

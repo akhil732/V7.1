@@ -6,3 +6,4 @@ export * from './ContextDrawer';
 export * from './HistoryPanel';
 export * from './InputArea';
 export * from './UnifiedKPGroundTruthEngine';
+export * from './ReasoningChainDisclosure';

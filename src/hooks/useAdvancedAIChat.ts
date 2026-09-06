@@ -11,6 +11,12 @@ import {
 } from '../components/AdvancedAITab/UnifiedKPGroundTruthEngine';
 import { generateVedicBirthChartMarkdown } from '../lib/vedicMarkdownGenerator';
 import { computeLiveTransitSnapshot } from '../lib/engines/LiveTransitEngine';
+import {
+  VedicReasoningLayer,
+  inferVedicDomain,
+  buildVedicReasoningSection,
+  VedicReasoningContext
+} from '../lib/engines/VedicReasoningLayer';
 
 interface UseAdvancedAIChatOptions {
   birthData: BirthDetails;
@@ -246,6 +252,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     setError(null);
 
     let accumulated = '';
+    let vedicReasoningContext: any = null;
 
     try {
       const unifiedGroundTruth = computeUnifiedKPGroundTruth(text, birthData, horoscopeData);
@@ -267,6 +274,18 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
       const moonSign = d1.Moon?.sign || 'Aries';
       const transitData = computeLiveTransitSnapshot(moonSign, new Date());
       const birthChartMd = generateVedicBirthChartMarkdown(birthData, horoscopeData, transitData);
+
+      // Compute Vedic 3-Layer Reasoning Context & Ground Truth
+      const vedicDomain = inferVedicDomain(text);
+      vedicReasoningContext = VedicReasoningLayer.compute(
+        birthData,
+        horoscopeData,
+        vedicDomain,
+        text,
+        new Date()
+      );
+      const vedicReasoningMd = buildVedicReasoningSection(vedicReasoningContext, language || 'en');
+
       const systemPrompt = `═══════════════════════════════════════════════════════════════════
 NATAL CHART — SOURCE OF TRUTH (IMMUTABLE REFERENCE DATA)
 ═══════════════════════════════════════════════════════════════════
@@ -281,6 +300,8 @@ RULES:
 • Do NOT hallucinate nakshatra lords, degrees, or divisional chart placements not listed here.
 
 ${birthChartMd}
+
+${vedicReasoningMd}
 
 ═══════════════════════════════════════════════════════════════════
 AI ENGINE CONFIGURATION & ANALYSIS RULES (follows below)
@@ -370,6 +391,7 @@ ${baseSystemPrompt}`;
           queryDomain: domainClassification.domain,
           confidence: queryIntent.confidence,
           kpGroundTruths,
+          vedicReasoningContext,
           persona: activePersona
         }
       };
@@ -384,7 +406,7 @@ ${baseSystemPrompt}`;
             role: 'assistant',
             content: accumulated + '\n\n*(సంభాషణ నిలిపివేయబడింది)*',
             timestamp: new Date(),
-            metadata: { persona: activePersona }
+            metadata: { persona: activePersona, vedicReasoningContext }
           };
           setMessages(prev => [...prev, partialMessage]);
         }
