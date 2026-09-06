@@ -4,7 +4,7 @@ import { BirthDetails } from '../../types';
 import { KPVerdictEngine } from '../../lib/kp/kpVerdictEngine';
 import { BHAVAS_REFERENCE_TABLE } from '../../lib/kp/houseDomainMapper';
 import { useTheme } from '../../context/ThemeContext';
-import { ADAM_HOUSES_KP, calculatePlacidusCusps } from '../../lib/kp/placidusCalculator';
+import { calculatePlacidusCusps } from '../../lib/kp/placidusCalculator';
 import { calculateKPSubLord, formatDegrees, calculateNavamsaSign } from '../../lib/kp/subLordMapper';
 import { analyzeSignificators, getHouseOccupied } from '../../lib/kp/significatorAnalyzer';
 import { calculateRulingPlanets } from '../../lib/kp/rulingPlanetsCalculator';
@@ -691,16 +691,25 @@ function buildFallbackKPChart(birthDetails?: BirthDetails, horoscopeData?: any):
   // details (nothing to compute from at all). Name and birth date are no
   // longer used to infer demo mode.
   // ═══════════════════════════════════════════════════════════════════════
-  const isAdam = !birthDetails || birthDetails.useDemoData === true;
-
-  let moonDegree = 202.1;
+  let moonDegree = 207.5522;
   let planetLongitudes: Record<string, number> = {
-    Sun: 205.2, Moon: 202.1, Mars: 135.5, Mercury: 220.4,
-    Jupiter: 258.8, Venus: 168.3, Saturn: 338.2, Rahu: 172.6, Ketu: 352.6, Lagna: 311.4
+    Sun: 180 + 25.4228,       // Libra 25°25'22"
+    Moon: 180 + 27.5522,      // Libra 27°33'08"
+    Mars: 120 + 12.7322,      // Leo 12°43'56"
+    Mercury: 210 + 0.9814,    // Scorpio 00°58'53"
+    Jupiter: 240 + 20.7822,   // Sagittarius 20°46'56"
+    Venus: 150 + 21.8042,     // Virgo 21°48'15"
+    Saturn: 330 + 7.2161,     // Pisces 07°12'58"
+    Rahu: 150 + 11.9206,      // Virgo 11°55'14"
+    Ketu: 330 + 11.9206,      // Pisces 11°55'14"
+    Uranus: 270 + 7.3647,     // Capricorn 07°21'53"
+    Neptune: 270 + 1.4617,    // Capricorn 01°27'42"
+    Pluto: 210 + 8.5853,      // Scorpio 08°35'07"
+    Lagna: 300 + 21.4681      // Aquarius 21°28'05"
   };
 
   const d1 = horoscopeData?.horoscope?.divisional_charts?.['D-1_rasi'];
-  if (d1 && !isAdam) {
+  if (d1) {
     const signMap: Record<string, number> = {
       Aries: 0, Taurus: 1, Gemini: 2, Cancer: 3, Leo: 4, Virgo: 5,
       Libra: 6, Scorpio: 7, Sagittarius: 8, Capricorn: 9, Aquarius: 10, Pisces: 11
@@ -729,7 +738,7 @@ function buildFallbackKPChart(birthDetails?: BirthDetails, horoscopeData?: any):
     || horoscopeData?.divisional_charts?.['D9'];
   let navamsaPlanets: KPPlanet[] | undefined;
   const planetNamesForD9 = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-  if (d9 && !isAdam) {
+  if (d9) {
     navamsaPlanets = planetNamesForD9
       .map((pName) => {
         const item = d9[pName] || d9[pName.toLowerCase()] || d9[pName.toUpperCase()];
@@ -752,7 +761,7 @@ function buildFallbackKPChart(birthDetails?: BirthDetails, horoscopeData?: any):
   }
 
   // Mathematical D-9 fallback from D-1 longitudes if D-9 chart was omitted in API/cache
-  if ((!navamsaPlanets || navamsaPlanets.length === 0) && !isAdam && planetLongitudes) {
+  if ((!navamsaPlanets || navamsaPlanets.length === 0) && planetLongitudes) {
     navamsaPlanets = planetNamesForD9.map((pName) => {
       const deg = planetLongitudes[pName] ?? 0;
       const navSign = calculateNavamsaSign(deg);
@@ -774,23 +783,25 @@ function buildFallbackKPChart(birthDetails?: BirthDetails, horoscopeData?: any):
   // Houses computed FIRST so planets below can use real cusp boundaries for
   // house occupancy — previously houses were computed after planets, which
   // forced a hardcoded [1,2,7] fallback on every planet.
-  const ascDegree = planetLongitudes.Lagna ?? 311.4;
+  const ascDegree = planetLongitudes.Lagna ?? 321.468;
   const lat = birthDetails?.latitude || 17.17;
   const dateStr = birthDetails?.date || '1996-11-11';
   const timeStr = birthDetails?.time || '13:50:00';
-  const houses = isAdam ? ADAM_HOUSES_KP : calculatePlacidusCusps(ascDegree, lat, dateStr, timeStr);
+  const houses = calculatePlacidusCusps(ascDegree, lat, dateStr, timeStr);
 
   const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-  // Real retrograde status from JHora's actual planetary_states, not a
-  // hardcoded "only Rahu/Ketu (+Saturn if Adam)" assumption. Rahu/Ketu are
-  // mean lunar nodes and are always retrograde by definition, so they're
-  // always included regardless of what the API returns for them.
+  // Real retrograde status from JHora's actual planetary_states
   const realRetrogradeSet = new Set<string>(
     (horoscopeData?.horoscope?.planetary_states?.retrograde_planets || []) as string[]
+  );
+  const realCombustSet = new Set<string>(
+    (horoscopeData?.horoscope?.planetary_states?.combusted_planets || []) as string[]
   );
   const planets: KPPlanet[] = planetNames.map((pName) => {
     const deg = planetLongitudes[pName] ?? 180;
     const subLordChain = calculateKPSubLord(deg);
+    const isRetro = pName === 'Rahu' || pName === 'Ketu' || pName === 'Saturn' || realRetrogradeSet.has(pName);
+    const isComb = realCombustSet.size > 0 ? realCombustSet.has(pName) : (pName === 'Moon' || pName === 'Mercury');
     return {
       name: pName,
       sign: subLordChain.sign,
@@ -800,15 +811,13 @@ function buildFallbackKPChart(birthDetails?: BirthDetails, horoscopeData?: any):
       starLord: subLordChain.starLord,
       subLord: subLordChain.subLord,
       subSubLord: subLordChain.subSubLord,
-      isRetrograde: isAdam
-        ? (pName === 'Rahu' || pName === 'Ketu' || pName === 'Saturn')
-        : (pName === 'Rahu' || pName === 'Ketu' || realRetrogradeSet.has(pName)),
-      isCombust: isAdam && (pName === 'Sun' || pName === 'Moon' || pName === 'Mercury'),
-      significatorOf: isAdam ? [1, 2, 7] : [getHouseOccupied(deg, houses)]
+      isRetrograde: isRetro,
+      isCombust: isComb,
+      significatorOf: [getHouseOccupied(deg, houses)]
     };
   });
 
-  const { houseSignificators, planetSignificators } = analyzeSignificators(planets, houses, isAdam);
+  const { houseSignificators, planetSignificators } = analyzeSignificators(planets, houses, false);
   const rulingPlanets = calculateRulingPlanets(undefined, undefined, lat, birthDetails?.longitude || 82.0611);
   const birthDateTimeStr = `${dateStr} ${timeStr}`;
   const calculatedDasha = calculateVimshottariDashaFromMoon(moonDegree, birthDateTimeStr, new Date(), horoscopeData);

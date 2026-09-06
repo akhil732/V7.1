@@ -5,18 +5,17 @@ import {
   ConsultationPersona
 } from '../lib/services/EnhancedGeminiConsultationService';
 import type { BirthDetails } from '../types';
-import {
-  computeUnifiedKPGroundTruth,
-  buildSystemPrompt
-} from '../components/AdvancedAITab/UnifiedKPGroundTruthEngine';
 import { generateVedicBirthChartMarkdown } from '../lib/vedicMarkdownGenerator';
 import { computeLiveTransitSnapshot } from '../lib/engines/LiveTransitEngine';
 import {
   VedicReasoningLayer,
   inferVedicDomain,
   buildVedicReasoningSection,
-  VedicReasoningContext
 } from '../lib/engines/VedicReasoningLayer';
+import { computeInterplanetaryRelations } from '../lib/engines/InterplanetaryRelationEngine';
+import { calculateActiveDasha } from '../lib/engines/DashaEngine';
+import { ASTROLOGICAL_TERMS_MAP } from '../lib/i18n/astrologicalTerms';
+import { normalizeTeluguScript } from '../lib/i18n/scriptNormalizer';
 
 interface UseAdvancedAIChatOptions {
   birthData: BirthDetails;
@@ -31,6 +30,142 @@ export interface ChatSession {
   timestamp: number;
   messages: ConversationMessage[];
 }
+
+// ─── Build clean system prompt from MD source of truth ──────────────────────
+
+function buildCleanSystemPrompt(
+  birthData: BirthDetails,
+  horoscopeData: any,
+  userQuery: string,
+  language: 'en' | 'hi' | 'te'
+): string {
+  const langName = language === 'te' ? 'Telugu' : language === 'hi' ? 'Hindi' : 'English';
+  const now = new Date();
+
+  // ── Extract D1 natal planet signs ──────────────────────────────────────
+  const d1 = horoscopeData?.horoscope?.divisional_charts?.['D-1_rasi'] || horoscopeData?.rasi || {};
+  const moonSign = d1.Moon?.sign || 'Aries';
+
+  const allPlanets = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+  const natalSigns: Record<string, string> = {};
+  for (const p of allPlanets) {
+    if (d1[p]?.sign) natalSigns[p] = d1[p].sign;
+  }
+
+  // ── 1. Live transit snapshot (all 9 planets) ────────────────────────────
+  const transitData = computeLiveTransitSnapshot(moonSign, now);
+  const transitSigns: Record<string, string> = {};
+  const transitHouseFromMoon: Record<string, number> = {};
+  for (const p of allPlanets) {
+    const pos = transitData.positions[p as any];
+    if (pos) {
+      transitSigns[p] = pos.sign;
+      transitHouseFromMoon[p] = pos.houseFromMoon;
+    }
+  }
+
+  // ── 2. Active Dasha lords ───────────────────────────────────────────────
+  let mdPlanet = 'Jupiter';
+  let mdSign = natalSigns['Jupiter'] || 'Cancer';
+  let adPlanet = 'Saturn';
+  let adSign = natalSigns['Saturn'] || 'Capricorn';
+  let pdPlanet: string | undefined = undefined;
+  let pdSign: string | undefined = undefined;
+
+  try {
+    const dashaData = calculateActiveDasha(horoscopeData, birthData.date, now);
+    if (dashaData?.mahadasha?.lord) {
+      mdPlanet = dashaData.mahadasha.lord;
+      mdSign = natalSigns[mdPlanet] || mdSign;
+    }
+    if (dashaData?.antardasha?.lord) {
+      adPlanet = dashaData.antardasha.lord;
+      adSign = natalSigns[adPlanet] || adSign;
+    }
+    if (dashaData?.pratyantardasha?.lord) {
+      pdPlanet = dashaData.pratyantardasha.lord;
+      pdSign = natalSigns[pdPlanet] || undefined;
+    }
+  } catch {
+    // use defaults
+  }
+
+  // ── 3. Interplanetary relations — period lords only (Dwirdwadasha + Shadaṣṭaka) ──
+  const ipRelations = computeInterplanetaryRelations({
+    mdLord: mdPlanet,
+    mdNatalSign: mdSign,
+    mdTransitSign: transitSigns[mdPlanet] || mdSign,
+    adLord: adPlanet,
+    adNatalSign: adSign,
+    adTransitSign: transitSigns[adPlanet] || adSign,
+    pdLord: pdPlanet,
+    pdNatalSign: pdSign,
+    pdTransitSign: pdPlanet ? transitSigns[pdPlanet] || pdSign : undefined
+  });
+
+  // ── 4. Full natal chart markdown (source of truth) ─────────────────────
+  const birthChartMd = generateVedicBirthChartMarkdown(birthData, horoscopeData, transitData);
+
+  // ── 5. Vedic 3-layer reasoning (Natal → Dasha → Gochara) ───────────────
+  const vedicDomain = inferVedicDomain(userQuery);
+  const vedicCtx = VedicReasoningLayer.compute(birthData, horoscopeData, vedicDomain, userQuery, now);
+  const vedicReasoningMd = buildVedicReasoningSection(vedicCtx, language);
+
+  // ── 6. Terminology glossary ─────────────────────────────────────────────
+  const glossary = Object.entries(ASTROLOGICAL_TERMS_MAP).reduce((acc, [, term]) => {
+    acc[term.en] = normalizeTeluguScript(term[language]);
+    return acc;
+  }, {} as Record<string, string>);
+  const glossaryBlock = JSON.stringify(glossary, null, 2);
+
+  return `\
+═══════════════════════════════════════════════════════════════════
+NATAL CHART — SOURCE OF TRUTH (IMMUTABLE)
+═══════════════════════════════════════════════════════════════════
+
+RULES:
+• Every claim about a planet, house, dasha, dignity, or transit MUST be traceable to this data.
+• If a value is absent, say "Not found in chart data" — never estimate or fabricate.
+• Do NOT override these values with training-data assumptions.
+
+${birthChartMd}
+
+═══════════════════════════════════════════════════════════════════
+THREE-LAYER VEDIC REASONING (PRE-COMPUTED GROUND TRUTH)
+═══════════════════════════════════════════════════════════════════
+
+${vedicReasoningMd}
+
+${ipRelations.promptBlock}
+
+═══════════════════════════════════════════════════════════════════
+RESPONSE INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+You are an expert Vedic (Parashari) astrologer. Follow these rules:
+
+1. LANGUAGE: Write your ENTIRE response in ${langName}. Use exact terminology below.
+2. FRAMEWORK: Structure every answer around the three layers:
+   • Layer 1 — నాటల్ ప్రామిస్ (Natal Promise): D-1 Rasi placements, house lords, dignities.
+   • Layer 2 — దశ-అంతర్దశ (Dasha-Antardasha): Current MD/AD activation, house connection, AND whether MD-AD lords are in Dwirdwadasha/Shadaṣṭaka relation.
+   • Layer 3 — గోచార (Gochara): Live transits of ALL 9 planets from Moon sign — their house positions, AND whether any transit planet is in Dwirdwadasha/Shadaṣṭaka with natal planets or active Dasha lords.
+3. DWIRDWADASHA / SHADAṢṬAKA RULE: When either is present (pre-computed above), you MUST:
+   a. State the relation explicitly and its impact.
+   b. Qualify predictions — results will be delayed (2-12) or blocked/reversed (6-8).
+   c. Compound the effect when BOTH natal Dasha pair AND transit are afflicted simultaneously.
+   d. Suggest appropriate classical remedy (mantra, dana, ratna) for the afflicted planet pair.
+4. GOCHARA — ALL 9 PLANETS: Do NOT limit transit analysis to Jupiter and Saturn. Cover all 9 grahas. Slow planets (Jupiter, Saturn, Rahu, Ketu) set the macro climate; fast planets (Sun, Moon, Mars, Mercury, Venus) act as triggers. When a fast planet transits into Dwirdwadasha or Shadaṣṭaka with a key natal planet during the current Dasha period, it triggers results (good or bad) of that Dasha.
+5. NO KP: Do not use KP terminology (sub-lords, cusps, Placidus, significators L1-L4).
+6. NO FABRICATION: If chart data is missing, say "Not found" — never invent positions.
+7. QUALITATIVE ONLY: Express strength as Exalted / Own / Friendly / Neutral / Debilitated — no star ratings or percentages.
+8. REMEDIES: Match remedies to afflicting planet pairs identified in the Interplanetary Relations block above.
+
+ASTROLOGICAL TERMINOLOGY (use exact forms in ${langName}):
+${glossaryBlock}
+`;
+}
+
+// ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useAdvancedAIChat({ birthData, horoscopeData, userId, language = 'en' }: UseAdvancedAIChatOptions) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -65,7 +200,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     setStreamingText('');
   }, []);
 
-  // Load saved sessions from localStorage on mount/profile-change
+  // Load saved sessions on mount / profile change
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`advanced_ai_sessions_${birthData.name || 'native'}`);
@@ -73,7 +208,6 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
         const parsed = JSON.parse(saved) as ChatSession[];
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSessions(parsed);
-          // Load the most recent session
           const sorted = [...parsed].sort((a, b) => b.timestamp - a.timestamp);
           const active = sorted[0];
           setActiveSessionId(active.id);
@@ -88,11 +222,10 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
       console.warn('Failed to load saved sessions:', e);
     }
 
-    // Fallback/Initial state: Create a new session
     const initialId = `s_${Date.now()}`;
     const initialSession: ChatSession = {
       id: initialId,
-      title: 'కొత్త విశ్లేషణ (New Chat)',
+      title: 'కొత్త విశ్లేషణ',
       timestamp: Date.now(),
       messages: []
     };
@@ -101,43 +234,35 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     setMessages([]);
   }, [birthData.name]);
 
-  // Sync active session changes whenever messages update
+  // Sync active session when messages change
   useEffect(() => {
     if (!activeSessionId) return;
-
     setSessions(prevSessions => {
-      const sessionIdx = prevSessions.findIndex(s => s.id === activeSessionId);
-      if (sessionIdx === -1) return prevSessions;
+      const idx = prevSessions.findIndex(s => s.id === activeSessionId);
+      if (idx === -1) return prevSessions;
 
-      const currentSession = prevSessions[sessionIdx];
-      
-      // Compare messages array roughly to avoid redundant updates
-      if (currentSession.messages.length === messages.length && 
-          JSON.stringify(currentSession.messages.map(m => m.content)) === JSON.stringify(messages.map(m => m.content))) {
+      const current = prevSessions[idx];
+      if (
+        current.messages.length === messages.length &&
+        JSON.stringify(current.messages.map(m => m.content)) ===
+          JSON.stringify(messages.map(m => m.content))
+      ) {
         return prevSessions;
       }
 
-      // Automatically title the chat based on the first user message
-      let title = currentSession.title;
-      if (title === 'கொత్త విశ్లేషణ (New Chat)' || title === 'కొత్త విశ్లేషణ (New Chat)' || title === 'New Chat' || !title) {
-        const firstUserMsg = messages.find(m => m.role === 'user');
-        if (firstUserMsg) {
-          title = firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '');
+      let title = current.title;
+      if (!title || title === 'కొత్త విశ్లేషణ') {
+        const firstUser = messages.find(m => m.role === 'user');
+        if (firstUser) {
+          title = firstUser.content.slice(0, 30) + (firstUser.content.length > 30 ? '...' : '');
         }
       }
 
-      const updatedSession: ChatSession = {
-        ...currentSession,
-        title,
-        timestamp: Date.now(),
-        messages
-      };
-
-      const nextSessions = [...prevSessions];
-      nextSessions[sessionIdx] = updatedSession;
-      
-      saveSessionsToStorage(nextSessions);
-      return nextSessions;
+      const updated: ChatSession = { ...current, title, timestamp: Date.now(), messages };
+      const next = [...prevSessions];
+      next[idx] = updated;
+      saveSessionsToStorage(next);
+      return next;
     });
   }, [messages, activeSessionId, birthData.name]);
 
@@ -146,7 +271,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     const newId = `s_${Date.now()}`;
     const newSession: ChatSession = {
       id: newId,
-      title: 'కొత్త విశ్లేషణ (New Chat)',
+      title: 'కొత్త విశ్లేషణ',
       timestamp: Date.now(),
       messages: []
     };
@@ -175,13 +300,11 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     stopGenerating();
     setSessions(prev => {
       const next = prev.filter(s => s.id !== sessionId);
-      
       if (activeSessionId === sessionId) {
         if (next.length > 0) {
           const sorted = [...next].sort((a, b) => b.timestamp - a.timestamp);
-          const active = sorted[0];
-          setActiveSessionId(active.id);
-          setMessages(active.messages.map((m: any) => ({
+          setActiveSessionId(sorted[0].id);
+          setMessages(sorted[0].messages.map((m: any) => ({
             ...m,
             timestamp: new Date(m.timestamp)
           })));
@@ -189,7 +312,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
           const newId = `s_${Date.now()}`;
           const newSession: ChatSession = {
             id: newId,
-            title: 'కొత్త విశ్లేషణ (New Chat)',
+            title: 'కొత్త విశ్లేషణ',
             timestamp: Date.now(),
             messages: []
           };
@@ -198,7 +321,6 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
           setMessages([]);
         }
       }
-      
       saveSessionsToStorage(next);
       return next;
     });
@@ -209,7 +331,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     const newId = `s_${Date.now()}`;
     const newSession: ChatSession = {
       id: newId,
-      title: 'కొత్త విశ్లేషణ (New Chat)',
+      title: 'కొత్త విశ్లేషణ',
       timestamp: Date.now(),
       messages: []
     };
@@ -220,7 +342,7 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     saveSessionsToStorage(next);
   }, [stopGenerating, birthData.name]);
 
-  // Abort stream on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -252,76 +374,15 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     setError(null);
 
     let accumulated = '';
-    let vedicReasoningContext: any = null;
 
     try {
-      const unifiedGroundTruth = computeUnifiedKPGroundTruth(text, birthData, horoscopeData);
-      const kpGroundTruths = service.computeKPGroundTruths(text, birthData, horoscopeData);
-      const consultationFacts = service.computeConsultationFacts(birthData, horoscopeData);
-
-      const queryIntent = (service as any)['queryEngine'].recognizeIntent(text);
-      const domainClassification = (service as any)['queryEngine'].classifyDomain(queryIntent);
-
-      const baseSystemPrompt = buildSystemPrompt(activePersona, unifiedGroundTruth, birthData.name || 'Native');
-
-      // ─── NATAL CHART SOURCE OF TRUTH ───────────────────────────────────────
-      // Generate the structured MD report and prepend it to the system prompt.
-      // This is the single authoritative natal data block for all AI responses.
-      // The AI MUST treat values in this section as ground truth and NEVER
-      // fabricate, estimate, or contradict any planetary position, house placement,
-      // nakshatra, dasha date, or dignity listed here.
-      const d1 = horoscopeData?.horoscope?.divisional_charts?.["D-1_rasi"] || horoscopeData?.rasi || {};
-      const moonSign = d1.Moon?.sign || 'Aries';
-      const transitData = computeLiveTransitSnapshot(moonSign, new Date());
-      const birthChartMd = generateVedicBirthChartMarkdown(birthData, horoscopeData, transitData);
-
-      // Compute Vedic 3-Layer Reasoning Context & Ground Truth
-      const vedicDomain = inferVedicDomain(text);
-      vedicReasoningContext = VedicReasoningLayer.compute(
-        birthData,
-        horoscopeData,
-        vedicDomain,
-        text,
-        new Date()
-      );
-      const vedicReasoningMd = buildVedicReasoningSection(vedicReasoningContext, language || 'en');
-
-      const systemPrompt = `═══════════════════════════════════════════════════════════════════
-NATAL CHART — SOURCE OF TRUTH (IMMUTABLE REFERENCE DATA)
-═══════════════════════════════════════════════════════════════════
-
-The following Vedic birth chart data is the ONLY authoritative source for all planetary positions, 
-house placements, nakshatra, dasha timelines, and dignities in this consultation.
-
-RULES:
-• Every claim you make about a planet, house, dasha, or dignity MUST be traceable to this data.
-• If a value is not present in this data, respond with "Not found in chart data" — do NOT estimate.
-• Do NOT override these values with your training data or general astrological assumptions.
-• Do NOT hallucinate nakshatra lords, degrees, or divisional chart placements not listed here.
-
-${birthChartMd}
-
-${vedicReasoningMd}
-
-═══════════════════════════════════════════════════════════════════
-AI ENGINE CONFIGURATION & ANALYSIS RULES (follows below)
-═══════════════════════════════════════════════════════════════════
-
-${baseSystemPrompt}`;
-      // ────────────────────────────────────────────────────────────────────────
-
-      const userMsgPayload = (service as any)['buildUserMessage'](
-        text,
-        consultationFacts,
-        domainClassification,
-        messages
-      );
+      // ── Build clean system prompt from MD source of truth ──
+      const systemPrompt = buildCleanSystemPrompt(birthData, horoscopeData, text, language);
 
       const res = await fetch('/api/advanced-ai/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `${systemPrompt}\n\n${userMsgPayload}`,
           systemInstructionOverride: systemPrompt,
           userQuery: text,
           conversationHistory: newHistory,
@@ -358,18 +419,17 @@ ${baseSystemPrompt}`;
                   accumulated += parsed.text;
                   setStreamingText(accumulated);
                 }
-                if (parsed.error) {
-                  throw new Error(parsed.error);
-                }
+                if (parsed.error) throw new Error(parsed.error);
                 if (parsed.done) break;
-              } catch (e: any) {
-                // Ignore SSE parse issues
+              } catch {
+                // ignore malformed SSE chunks
               }
             }
           }
         }
       }
 
+      // Fallback to non-streaming if stream returned empty
       if (!accumulated.trim()) {
         const fallbackRes = await service.generateConsultationResponse({
           birthData,
@@ -387,26 +447,19 @@ ${baseSystemPrompt}`;
         role: 'assistant',
         content: accumulated,
         timestamp: new Date(),
-        metadata: {
-          queryDomain: domainClassification.domain,
-          confidence: queryIntent.confidence,
-          kpGroundTruths,
-          vedicReasoningContext,
-          persona: activePersona
-        }
+        metadata: { persona: activePersona }
       };
 
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingText('');
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        console.log('Stream request aborted by user.');
         if (accumulated.trim()) {
           const partialMessage: ConversationMessage = {
             role: 'assistant',
             content: accumulated + '\n\n*(సంభాషణ నిలిపివేయబడింది)*',
             timestamp: new Date(),
-            metadata: { persona: activePersona, vedicReasoningContext }
+            metadata: { persona: activePersona }
           };
           setMessages(prev => [...prev, partialMessage]);
         }
@@ -415,7 +468,7 @@ ${baseSystemPrompt}`;
         setError(err.message || 'Error generating consultation response');
         const fallbackMsg: ConversationMessage = {
           role: 'assistant',
-          content: '### సమాచార గమనిక (Consultation Notice)\n\nAI ప్రతిస్పందనను పూర్తి చేయలేకపోయాము. దయచేసి నెట్‌వర్క్ కనెక్షన్ తనిఖీ చేసి, మళ్లీ ప్రయత్నించండి.',
+          content: '### సమాచార గమనిక\n\nAI ప్రతిస్పందనను పూర్తి చేయలేకపోయాము. నెట్వర్క్ కనెక్షన్ తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.',
           timestamp: new Date(),
           metadata: { persona: activePersona }
         };
@@ -426,10 +479,10 @@ ${baseSystemPrompt}`;
       setStreamingText('');
       abortControllerRef.current = null;
     }
-  }, [messages, isLoading, activePersona, birthData, horoscopeData, userId, service]);
+  }, [messages, isLoading, activePersona, birthData, horoscopeData, userId, language, service]);
 
-  const changePersona = useCallback((newPersona: ConsultationPersona) => {
-    // No-op because only 'quick' (Telugu) is allowed
+  const changePersona = useCallback((_newPersona: ConsultationPersona) => {
+    // No-op: only 'quick' (Telugu AI) persona is active
   }, []);
 
   return {

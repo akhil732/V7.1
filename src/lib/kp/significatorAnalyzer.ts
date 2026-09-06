@@ -129,18 +129,11 @@ export function getRankedSignificators(
 export function analyzeSignificators(
   planets: KPPlanet[],
   houses: KPHouse[],
-  isAdamProfile = false
+  _legacyFlag = false
 ): {
   houseSignificators: Record<number, string[]>;
   planetSignificators: Record<string, PlanetSignificatorLevels>;
 } {
-  if (isAdamProfile) {
-    return {
-      houseSignificators: ADAM_HOUSE_SIGNIFICATORS,
-      planetSignificators: ADAM_PLANET_SIGNIFICATORS
-    };
-  }
-
   const planetSignificators: Record<string, PlanetSignificatorLevels> = {};
   const houseSignificators: Record<number, string[]> = {};
 

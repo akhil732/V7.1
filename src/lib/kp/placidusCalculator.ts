@@ -23,14 +23,9 @@ export const ADAM_HOUSES_KP: KPHouse[] = [
 export function calculatePlacidusCusps(
   ascendantDegree: number,
   latitude: number,
-  dateStr?: string,
-  timeStr?: string
+  _dateStr?: string,
+  _timeStr?: string
 ): KPHouse[] {
-  // Check if birth data matches Adam's exact test profile (Nov 11, 1996)
-  if (dateStr === '1996-11-11' && (timeStr?.startsWith('13:50') || timeStr?.startsWith('01:50'))) {
-    return ADAM_HOUSES_KP;
-  }
-
   // General Placidus/Equal Cusp Approximation Engine
   // Equal / Placidus Cusp baseline offset modeling
   const houses: KPHouse[] = [];

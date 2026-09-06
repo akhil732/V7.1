@@ -422,9 +422,39 @@ export function calculateActiveDasha(horoscope: any, birthDateStr: string, targe
 
   const activeAd = ads.find(a => targetDate >= a.startDate && targetDate <= a.endDate) || ads[0];
 
+  const adLordIdx = DASHA_LORDS.indexOf(activeAd.lord);
+  const pds: Dasha[] = [];
+  let prevPdEnd = activeAd.startDate;
+
+  for (let k = 0; k < 9; k++) {
+    const pdLord = DASHA_LORDS[(adLordIdx + k) % 9];
+    const duration = (DASHA_DURATIONS[activeMd.lord] * DASHA_DURATIONS[activeAd.lord] * DASHA_DURATIONS[pdLord]) / (120 * 120);
+    const startDate = new Date(prevPdEnd);
+    const endDate = addYears(startDate, duration);
+
+    const totalDurMs = endDate.getTime() - startDate.getTime();
+    const elapsedMs = Math.max(0, targetDate.getTime() - startDate.getTime());
+    const remMs = Math.max(0, endDate.getTime() - targetDate.getTime());
+    const pct = Math.max(0, Math.min(100, (elapsedMs / totalDurMs) * 100));
+
+    pds.push({
+      lord: pdLord,
+      startDate,
+      endDate,
+      totalDuration: duration,
+      elapsedDuration: elapsedMs / (1000 * 60 * 60 * 24 * 365.25),
+      remainingDuration: remMs / (1000 * 60 * 60 * 24 * 365.25),
+      percentComplete: pct
+    });
+    prevPdEnd = endDate;
+  }
+
+  const activePd = pds.find(p => targetDate >= p.startDate && targetDate <= p.endDate) || pds[0];
+
   return {
     mahadasha: activeMd,
     antardasha: activeAd,
+    pratyantardasha: activePd,
     remainingBalance: activeMd.remainingDuration,
     timeline
   };

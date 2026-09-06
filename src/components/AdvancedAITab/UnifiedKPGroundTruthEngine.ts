@@ -470,7 +470,7 @@ function formatQuickDynamicProfile(gt: UnifiedKPGroundTruthWithDataFlags, native
   const hd = gt.horoscopeData;
 
   if (!bd || !hd) {
-    // Graceful fallback to default hardcoded Akhil profile
+    // Graceful fallback to default profile
     return `Birth Profile & Key Coordinates:
 Name: ${nativeName}
 Date of Birth: November 11, 1996 (11-Nov-1996)
@@ -478,22 +478,22 @@ Time of Birth: 13:50:00 (1:50 PM)
 Place of Birth: Jaggampeta, Andhra Pradesh, India
 Geographic Coordinates: 17.17° N Latitude, 82.06° E Longitude
 Timezone: GMT +5.5 (Indian Standard Time)
-Sidereal Ascendant (Lagna): Aquarius (20.94°) — Shatabhisha Nakshatra (Rahu)
+Sidereal Ascendant (Lagna): Aquarius (21°28'05") — Purvabhadra Nakshatra (Pada 1, Jupiter)
 Janma Rasi (Chandra Rasi): Libra (Thula) — Vishakha Nakshatra (Jupiter)
 Janma Nakshatra: Vishakha (Quarter 3)
 
 📊 Divisional charts: D-1, D-9, and D-10 Placements:
 1. D-1 Rasi:
-Ascendant (Lagna): Aquarius (20.94°) — Ruled by Saturn
-Sun: Libra (25.42°) — Debilitated, Vishakha Nakshatra
-Moon: Libra (27.55°) — Vishakha Nakshatra
-Mars: Leo (12.74°) — Magha Nakshatra
-Mercury: Scorpio (0.98°) — Vishakha Nakshatra
-Jupiter: Sagittarius (20.74°) — Own Sign (Moolatrikona), Purva Ashadha Nakshatra
-Venus: Virgo (21.80°) — Debilitated, Hasta Nakshatra
-Saturn: Pisces (7.23°) — Uttara Bhadrapada Nakshatra
-Rahu: Virgo (11.92°) — Exalted, Hasta Nakshatra
-Ketu: Pisces (11.92°) — Exalted, Uttara Bhadrapada Nakshatra
+Ascendant (Lagna): Aquarius (21°28'05") — Purva Bhadrapada Pada 1, Ruled by Saturn
+Sun: Libra (25°25'22") — Debilitated, Vishakha Nakshatra Pada 2
+Moon: Libra (27°33'08") — Vishakha Nakshatra Pada 3
+Mars: Leo (12°43'56") — Magha Nakshatra Pada 4
+Mercury: Scorpio (00°58'53") — Vishakha Nakshatra Pada 4
+Jupiter: Sagittarius (20°46'56") — Own Sign (Moolatrikona), Purva Ashadha Nakshatra Pada 3
+Venus: Virgo (21°48'15") — Debilitated, Hasta Nakshatra Pada 4
+Saturn [R]: Pisces (07°12'58") — Uttara Bhadrapada Nakshatra Pada 2
+Rahu [R]: Virgo (11°55'14") — Hasta Nakshatra Pada 1
+Ketu [R]: Pisces (11°55'14") — Uttara Bhadrapada Nakshatra Pada 3
 
 2. D-9 Navamsa:
 Ascendant: Aries (8.43°) — Ruled by Mars

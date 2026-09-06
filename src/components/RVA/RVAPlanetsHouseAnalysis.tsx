@@ -20,9 +20,9 @@ export const RVAPlanetsHouseAnalysis: React.FC<RVAPlanetsHouseAnalysisProps> = (
     return 'text-ds-error-crimson font-bold';
   };
 
-  let lagnaSign = "Sagittarius";
+  let lagnaSign = "Aquarius";
   if (horoscopeReport) {
-    lagnaSign = horoscopeReport?.horoscope?.divisional_charts?.["D-1_rasi"]?.Ascendant?.sign || "Sagittarius";
+    lagnaSign = horoscopeReport?.horoscope?.divisional_charts?.["D-1_rasi"]?.Ascendant?.sign || "Aquarius";
   }
 
   return (

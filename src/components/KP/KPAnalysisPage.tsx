@@ -3,8 +3,8 @@ import { KPChart, KPPlanet } from '../../types/kp';
 import { SavedPerson } from '../../types/marriageMatch';
 import { BirthDetails } from '../../types';
 import { ProfileStorageService } from '../../lib/profileStorageService';
-import { ADAM_PLANETS_KP as ADAM_PLANETS, calculateKPSubLord, formatDegrees, calculateNavamsaSign } from '../../lib/kp/subLordMapper';
-import { ADAM_HOUSES_KP, calculatePlacidusCusps } from '../../lib/kp/placidusCalculator';
+import { calculateKPSubLord, formatDegrees, calculateNavamsaSign } from '../../lib/kp/subLordMapper';
+import { calculatePlacidusCusps } from '../../lib/kp/placidusCalculator';
 import { analyzeSignificators, getHouseOccupied } from '../../lib/kp/significatorAnalyzer';
 import { calculateRulingPlanets } from '../../lib/kp/rulingPlanetsCalculator';
 import { calculateVimshottariDashaFromMoon, CalculatedDashaInfo, toKPChartDashaInfo } from '../../lib/engines/DashaEngine';
@@ -110,30 +110,31 @@ export const KPAnalysisPage: React.FC<KPAnalysisPageProps> = ({
     setFormError(null);
 
     try {
-      const isAdam = profile.id === 'satyam-family-10' || (profile.date === '1996-11-11' && (profile.name.toLowerCase().includes('akhil') || profile.name.toLowerCase().includes('adam')));
-
-      let moonDegree = 202.1; // Default Moon degree for Adam
+      let moonDegree = 207.5522;
       let planetLongitudes: Record<string, number> = {
-        Sun: 205.2,
-        Moon: 202.1,
-        Mars: 135.5,
-        Mercury: 220.4,
-        Jupiter: 258.8,
-        Venus: 168.3,
-        Saturn: 338.2,
-        Rahu: 172.6,
-        Ketu: 352.6,
-        Lagna: 311.4
+        Sun: 180 + 25.4228,       // Libra 25°25'22"
+        Moon: 180 + 27.5522,      // Libra 27°33'08"
+        Mars: 120 + 12.7322,      // Leo 12°43'56"
+        Mercury: 210 + 0.9814,    // Scorpio 00°58'53"
+        Jupiter: 240 + 20.7822,   // Sagittarius 20°46'56"
+        Venus: 150 + 21.8042,     // Virgo 21°48'15"
+        Saturn: 330 + 7.2161,     // Pisces 07°12'58"
+        Rahu: 150 + 11.9206,      // Virgo 11°55'14"
+        Ketu: 330 + 11.9206,      // Pisces 11°55'14"
+        Uranus: 270 + 7.3647,     // Capricorn 07°21'53"
+        Neptune: 270 + 1.4617,    // Capricorn 01°27'42"
+        Pluto: 210 + 8.5853,      // Scorpio 08°35'07"
+        Lagna: 300 + 21.4681      // Aquarius 21°28'05"
+      };
+
+      const signMap: Record<string, number> = {
+        Aries: 0, Taurus: 1, Gemini: 2, Cancer: 3, Leo: 4, Virgo: 5,
+        Libra: 6, Scorpio: 7, Sagittarius: 8, Capricorn: 9, Aquarius: 10, Pisces: 11
       };
 
       // Try reading directly from horoscopeData if available
       const d1 = horoscopeData?.horoscope?.divisional_charts?.['D-1_rasi'];
-      if (d1 && !isAdam) {
-        const signMap: Record<string, number> = {
-          Aries: 0, Taurus: 1, Gemini: 2, Cancer: 3, Leo: 4, Virgo: 5,
-          Libra: 6, Scorpio: 7, Sagittarius: 8, Capricorn: 9, Aquarius: 10, Pisces: 11
-        };
-
+      if (d1) {
         Object.keys(d1).forEach((key) => {
           const item = d1[key];
           if (item && item.sign && typeof item.longitude === 'number') {
@@ -147,8 +148,8 @@ export const KPAnalysisPage: React.FC<KPAnalysisPageProps> = ({
         if (typeof planetLongitudes.Moon === 'number') {
           moonDegree = planetLongitudes.Moon;
         }
-      } else if (!isAdam) {
-        // Fetch accurate astronomical positions from backend API if not test case
+      } else {
+        // Fetch accurate astronomical positions from backend API
         try {
           const res = await fetch(`${API_BASE_URL}/horoscope`, {
             method: 'POST',
@@ -167,11 +168,6 @@ export const KPAnalysisPage: React.FC<KPAnalysisPageProps> = ({
             const data = await res.json();
             const fetchedD1 = data?.horoscope?.divisional_charts?.['D-1_rasi'];
             if (fetchedD1) {
-              const signMap: Record<string, number> = {
-                Aries: 0, Taurus: 1, Gemini: 2, Cancer: 3, Leo: 4, Virgo: 5,
-                Libra: 6, Scorpio: 7, Sagittarius: 8, Capricorn: 9, Aquarius: 10, Pisces: 11
-              };
-
               Object.keys(fetchedD1).forEach((key) => {
                 const item = fetchedD1[key];
                 if (item && item.sign && typeof item.longitude === 'number') {
@@ -192,11 +188,9 @@ export const KPAnalysisPage: React.FC<KPAnalysisPageProps> = ({
         }
       }
 
-      // 1. Calculate Placidus House Cusps FIRST (planets need real cusp
-      //    boundaries below to compute genuine house occupancy — this used
-      //    to run after planet construction, forcing a hardcoded [1,2,7]).
-      const ascDegree = planetLongitudes.Lagna ?? 311.4;
-      const houses = isAdam ? ADAM_HOUSES_KP : calculatePlacidusCusps(ascDegree, profile.latitude, profile.date, profile.time);
+      // 1. Calculate Placidus House Cusps FIRST
+      const ascDegree = planetLongitudes.Lagna ?? 321.468;
+      const houses = calculatePlacidusCusps(ascDegree, profile.latitude, profile.date, profile.time);
 
       // 2. Calculate Planet Sub Lords + real house occupancy
       const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
@@ -212,14 +206,14 @@ export const KPAnalysisPage: React.FC<KPAnalysisPageProps> = ({
           starLord: subLordChain.starLord,
           subLord: subLordChain.subLord,
           subSubLord: subLordChain.subSubLord,
-          isRetrograde: pName === 'Rahu' || pName === 'Ketu' || (isAdam && pName === 'Saturn'),
-          isCombust: isAdam && (pName === 'Sun' || pName === 'Moon' || pName === 'Mercury'),
-          significatorOf: isAdam ? [1, 2, 7] : [getHouseOccupied(deg, houses)]
+          isRetrograde: pName === 'Rahu' || pName === 'Ketu' || pName === 'Saturn',
+          isCombust: pName === 'Moon' || pName === 'Mercury',
+          significatorOf: [getHouseOccupied(deg, houses)]
         };
       });
 
       // 3. Analyze Significators
-      const { houseSignificators, planetSignificators } = analyzeSignificators(planets, houses, isAdam);
+      const { houseSignificators, planetSignificators } = analyzeSignificators(planets, houses, false);
 
       // 4. Calculate Ruling Planets
       const rulingPlanets = calculateRulingPlanets(undefined, undefined, profile.latitude, profile.longitude);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PLANETARY_POSITIONS, CUSPS_DATA } from './rvaData';
 import { calculateKPSubLord, formatDegrees } from '../../lib/kp/subLordMapper';
-import { calculatePlacidusCusps, ADAM_HOUSES_KP } from '../../lib/kp/placidusCalculator';
+import { calculatePlacidusCusps } from '../../lib/kp/placidusCalculator';
 
 interface RVAPositionsAndCuspsProps {
   horoscopeReport?: any;
@@ -35,28 +35,30 @@ export const RVAPositionsAndCusps: React.FC<RVAPositionsAndCuspsProps> = ({
   let cuspsData = CUSPS_DATA;
 
   if (horoscopeReport) {
-    const isAdam = activeProfile?.id === 'satyam-family-10' || (activeProfile?.date === '1996-11-11' && (activeProfile?.name?.toLowerCase()?.includes('akhil') || activeProfile?.name?.toLowerCase()?.includes('adam')));
+    const signMap: Record<string, number> = {
+      Aries: 0, Taurus: 1, Gemini: 2, Cancer: 3, Leo: 4, Virgo: 5,
+      Libra: 6, Scorpio: 7, Sagittarius: 8, Capricorn: 9, Aquarius: 10, Pisces: 11
+    };
 
+    // Correct Sidereal baseline for Akhil (Aquarius Lagna 21°28'05")
     let planetLongitudes: Record<string, number> = {
-      Sun: 205.2,
-      Moon: 202.1,
-      Mars: 135.5,
-      Mercury: 220.4,
-      Jupiter: 258.8,
-      Venus: 168.3,
-      Saturn: 338.2,
-      Rahu: 172.6,
-      Ketu: 352.6,
-      Lagna: 311.4
+      Sun: 180 + 25.4228,       // Libra 25°25'22"
+      Moon: 180 + 27.5522,      // Libra 27°33'08"
+      Mars: 120 + 12.7322,      // Leo 12°43'56"
+      Mercury: 210 + 0.9814,    // Scorpio 00°58'53"
+      Jupiter: 240 + 20.7822,   // Sagittarius 20°46'56"
+      Venus: 150 + 21.8042,     // Virgo 21°48'15"
+      Saturn: 330 + 7.2161,     // Pisces 07°12'58"
+      Rahu: 150 + 11.9206,      // Virgo 11°55'14"
+      Ketu: 330 + 11.9206,      // Pisces 11°55'14"
+      Uranus: 270 + 7.3647,     // Capricorn 07°21'53"
+      Neptune: 270 + 1.4617,    // Capricorn 01°27'42"
+      Pluto: 210 + 8.5853,      // Scorpio 08°35'07"
+      Lagna: 300 + 21.4681      // Aquarius 21°28'05"
     };
 
     const d1 = horoscopeReport?.horoscope?.divisional_charts?.['D-1_rasi'];
-    if (d1 && !isAdam) {
-      const signMap: Record<string, number> = {
-        Aries: 0, Taurus: 1, Gemini: 2, Cancer: 3, Leo: 4, Virgo: 5,
-        Libra: 6, Scorpio: 7, Sagittarius: 8, Capricorn: 9, Aquarius: 10, Pisces: 11
-      };
-
+    if (d1) {
       Object.keys(d1).forEach((key) => {
         const item = d1[key];
         if (item && item.sign && typeof item.longitude === 'number') {
@@ -70,13 +72,15 @@ export const RVAPositionsAndCusps: React.FC<RVAPositionsAndCuspsProps> = ({
 
     // Compute planets
     const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+    const ascSign = d1?.Ascendant?.sign || d1?.Lagna?.sign || 'Aquarius';
+    const ascIdx = signMap[ascSign] ?? 10;
+
     planetsData = planetNames.map((pName) => {
       const deg = planetLongitudes[pName] ?? 180;
       const subLordChain = calculateKPSubLord(deg);
       
-      const stdName = pName === 'Lagna' ? 'Ascendant' : pName;
-      const rasiItem = d1?.[stdName];
-      const houseIndex = rasiItem && typeof rasiItem.house === 'number' ? rasiItem.house : 8;
+      const pSignIdx = signMap[subLordChain.sign] ?? 0;
+      const houseIndex = ((pSignIdx - ascIdx + 12) % 12) + 1;
 
       const signAbbr = SIGN_ABBR_MAP[subLordChain.sign] || subLordChain.sign.substring(0, 2);
 
@@ -95,11 +99,11 @@ export const RVAPositionsAndCusps: React.FC<RVAPositionsAndCuspsProps> = ({
     });
 
     // Compute cusps
-    const ascDegree = planetLongitudes.Lagna ?? 311.4;
+    const ascDegree = planetLongitudes.Lagna ?? 321.468;
     const latitude = activeProfile?.latitude ?? 17.17;
     const date = activeProfile?.date ?? '1996-11-11';
     const time = activeProfile?.time ?? '13:50:00';
-    const rawHouses = isAdam ? ADAM_HOUSES_KP : calculatePlacidusCusps(ascDegree, latitude, date, time);
+    const rawHouses = calculatePlacidusCusps(ascDegree, latitude, date, time);
 
     cuspsData = rawHouses.map((house) => {
       const subLordChain = calculateKPSubLord(house.cuspDegree);

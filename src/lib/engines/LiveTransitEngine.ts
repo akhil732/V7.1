@@ -79,6 +79,9 @@ export interface LiveTransitPosition {
   classification: 'Supportive' | 'Neutral' | 'Challenging';
   classicalResultTelugu: string;
   isRetrograde?: boolean;
+  isObstructed?: boolean;
+  vedhaObstructedBy?: string;
+  vedhaHouse?: number;
 }
 
 export interface LiveTransitSnapshot {
@@ -137,15 +140,104 @@ function meanLunarNodeLongitude(jd: number): number {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLASSICAL HOUSE-FROM-MOON RESULT TABLES (standard Vedic Gochara Phala)
-// Source pattern: classical Chandra-Gochara Phala as commonly tabulated in
-// Phaladeepika / Jataka Parijata gochara chapters. Kept generic/pattern-level
-// per planet, not fabricated numerics.
+// Source: Phaladeepika Ch. 26 & classical Chandra-Gochara traditions.
+// Specific, authentic Telugu results for all 9 planets from Moon sign.
 // ─────────────────────────────────────────────────────────────────────────────
+const SUN_HOUSE_RESULT_TE: Record<number, string> = {
+  1: 'శారీరక అలసట, గౌరవహాని, తలనొప్పి లేదా జ్వరం — ఆరోగ్య జాగ్రత్త',
+  2: 'ఆర్థిక వ్యయం, కుటుంబంలో విభేదాలు, నేత్ర బాధ',
+  3: 'అనుకూల సంచారం — పరాక్రమం, విజయం, శత్రు జయం, ధన లాభం',
+  4: 'మానసిక అశాంతి, గృహ సంబంధిత ఆందోళన, బంధువులతో విభేదాలు',
+  5: 'సంతానం పట్ల ఆందోళన, బుద్ధి మాంద్యం, గౌరవ లోపం',
+  6: 'అత్యంత అనుకూలం — శత్రు నిర్మూలన, రోగ నివారణ, శ్రేయస్సు, విజయం',
+  7: 'ప్రయాణ శ్రమ, జీవిత భాగస్వామితో విభేదాలు, ఉదర బాధ',
+  8: 'అష్టమ సూర్యుడు — ఆరోగ్య జాగ్రత్త, ఆకస్మిక భయాలు, ప్రభుత్వ సమస్యలు',
+  9: 'భాగ్య స్థానంలో అడ్డంకులు, పెద్దలతో భేదాభిప్రాయాలు, నిరాశ',
+  10: 'అనుకూలం — ఉద్యోగ ఉన్నతి, కీర్తి, నూతన బాధ్యతలు, కార్యసిద్ధి',
+  11: 'అత్యంత అనుకూలం — ధన లాభం, కోరికల నెరవేర్పు, ఆరోగ్యం, శ్రేయస్సు',
+  12: 'వృధా ఖర్చులు, ప్రవాసం, మానసిక ఆందోళన, నిద్రలేమి'
+};
+
+const MOON_HOUSE_RESULT_TE: Record<number, string> = {
+  1: 'ఉత్తమ భోజనం, శారీరక సౌఖ్యం, నూతన వస్త్రాలు, ఆనందం',
+  2: 'ఆర్థిక వ్యయం, మానసిక అశాంతి, కుటుంబంలో విభేదాలు',
+  3: 'ధైర్యం, వస్త్రలాభం, సోదర సౌఖ్యం, కార్య విజయం',
+  4: 'మానసిక ఆందోళన, అవిశ్వాసం, తల్లి ఆరోగ్యంపై శ్రద్ధ',
+  5: 'మానసిక చంచలత్వం, ప్రయాణ శ్రమ, సంతాన చింత',
+  6: 'అనుకూలం — శత్రు జయం, రోగ విముక్తి, ధైర్యం, సౌఖ్యం',
+  7: 'వాహన/భోజన సౌఖ్యం, భాగస్వామ్య ఆనందం, గౌరవ మర్యాదలు',
+  8: 'చంద్రాష్టమం — మానసిక భయం, శారీరక అస్వస్థత, ఆకస్మిక ఆందోళన',
+  9: 'ప్రయత్నాలలో జాప్యం, మనస్తాపం, ఆధ్యాత్మిక ఆసక్తి',
+  10: 'కార్యసిద్ధి, ఉద్యోగంలో అనుకూలత, సర్వజన ఆదరణ',
+  11: 'మిత్రుల సహకారం, నూతన లాభాలు, ఉల్లాసం, సంతోషం',
+  12: 'అధిక వ్యయం, ప్రయాణ శ్రమ, శారీరక అలసట, నిద్రలేమి'
+};
+
+const MARS_HOUSE_RESULT_TE: Record<number, string> = {
+  1: 'శారీరక అలసట, రక్తం/పిత్త బాధ, కలహాలు, ప్రమాద జాగ్రత్త',
+  2: 'ధన నష్టం, వాగ్వివాదాలు, కుటుంబంలో ఘర్షణ వాతావరణం',
+  3: 'అత్యంత అనుకూలం — పరాక్రమం, విజయం, శత్రు నిర్మూలన, ధనలాభం',
+  4: 'గృహ కలహాలు, శత్రు భయం, రక్తపోటు/జ్వర జాగ్రత్త',
+  5: 'సంతాన ఆందోళన, శారీరక ఉష్ణ బాధ, కోపం, మానసిక శ్రమ',
+  6: 'అత్యంత అనుకూలం — శత్రు సంహారం, రుణ విముక్తి, సర్వతోముఖ విజయం',
+  7: 'జీవిత భాగస్వామితో విభేదాలు, నేత్ర/ఉదర బాధ, ప్రయాణ శ్రమ',
+  8: 'అష్టమ కుజుడు — ఆకస్మిక ప్రమాదాలు, శస్త్రచికిత్స, శారీరక బాధ',
+  9: 'భాగ్యహాని, ప్రయాణాలలో అడ్డంకులు, అలసట, విఘ్నాలు',
+  10: 'వృత్తిలో తీవ్ర శ్రమ, మిశ్రమ ఫలితాలు, అధికార ఒత్తిడి',
+  11: 'అత్యంత అనుకూలం — భూలాభం, ధన ప్రాప్తి, సర్వకార్య జయం',
+  12: 'అనవసర ఖర్చులు, నేత్ర రోగాలు, శారీరక గాయాల జాగ్రత్త'
+};
+
+const MERCURY_HOUSE_RESULT_TE: Record<number, string> = {
+  1: 'కలహాలు, కపట మాటలు, ప్రయాణ శ్రమ, బంధువులతో విభేదాలు',
+  2: 'వాక్చాతుర్యం, ధనలాభం, కుటుంబ సౌఖ్యం, గౌరవం',
+  3: 'మిత్రులతో విభేదాలు, నూతన శత్రువులు, జాప్యం',
+  4: 'బంధు మిత్రుల సమాగమం, విద్యా వృద్ధి, గృహ సౌఖ్యం',
+  5: 'సంతాన చింత, బుద్ధి చాంచల్యం, వివాదాలు, ఆందోళన',
+  6: 'శత్రు జయం, నూతన ఆదాయం, కీర్తి, గౌరవం',
+  7: 'భార్యా/భర్తతో కలహాలు, ప్రయాణ శ్రమ, విభేదాలు',
+  8: 'అష్టమ బుధుడు అనుకూలం — ధనలాభం, సంతాన సౌఖ్యం, ఆకస్మిక విజయం',
+  9: 'అడ్డంకులు, విద్యా విఘ్నాలు, శ్రమ ఫలితం ఆలస్యం',
+  10: 'కార్యసిద్ధి, ధన సంపాదన, శత్రు నిర్మూలన, సంతోషం',
+  11: 'విద్య, ధన, సంతాన వృద్ధి, సర్వసౌఖ్యం, మిత్రలాభం',
+  12: 'శత్రు భయం, అవమానం, అనవసర ఖర్చులు, మానసిక అశాంతి'
+};
+
+const JUPITER_HOUSE_RESULT_TE: Record<number, string> = {
+  1: 'ఆత్మవిశ్వాసం, ఆరోగ్యం, వ్యక్తిత్వ వికాసం, స్థాన మార్పు',
+  2: 'ధన వృద్ధి, కుటుంబ శ్రేయస్సు, వాక్ మధురత్వం, శుభకార్యాలు',
+  3: 'ప్రయత్నశక్తి పెరుగుదల, సోదర సంబంధాల్లో శ్రమ, స్థాన చలనం',
+  4: 'గృహ సౌఖ్యం, మాతృ సంబంధిత శ్రద్ధ, స్థిరాస్తి ఆలోచనలు',
+  5: 'సంతానం, విద్య, బుద్ధి వికాసానికి అత్యంత అనుకూలం — దేవతానుగ్రహం',
+  6: 'సవాళ్లు — అనవసర వ్యయం, ఆరోగ్య జాగ్రత్త, రుణ భారం',
+  7: 'భాగస్వామ్య సంబంధాలు, వివాహ విషయాల్లో శుభం, సమాజంలో గౌరవం',
+  8: 'ఆకస్మిక పరిణామాలు, ఆధ్యాత్మిక అభివృద్ధి, పరిశోధనా ఆసక్తి',
+  9: 'అత్యంత అనుకూలం — భాగ్యోదయం, గురు-పెద్దల ఆశీస్సులు, ధర్మ కార్యాలు',
+  10: 'వృత్తిపరమైన శ్రమ, గుర్తింపు, నూతన బాధ్యతలు, స్థాన మార్పు',
+  11: 'అత్యంత అనుకూలం — లాభాలు, ఆదాయ వృద్ధి, కోరికల నెరవేర్పు',
+  12: 'వ్యయం, విదేశీ ప్రయాణాలు, ఆధ్యాత్మిక చింతన, ఏకాంతం'
+};
+
+const VENUS_HOUSE_RESULT_TE: Record<number, string> = {
+  1: 'సుగంధ ద్రవ్యాలు, వస్త్రలాభం, శారీరక సౌఖ్యం, ఆనందం',
+  2: 'ధన ధాన్య లాభం, కుటుంబ శ్రేయస్సు, వాక్ సౌమ్యత',
+  3: 'ప్రభావం, నూతన వస్త్ర ప్రాప్తి, మిత్రుల సహాయం',
+  4: 'బంధు సౌఖ్యం, నూతన వాహనం, గృహ శాంతి',
+  5: 'సంతాన లాభం, సలహాదారుల సహకారం, సంతోషం',
+  6: 'శత్రు బాధ, వ్యాధి భయం, స్త్రీలతో విభేదాలు',
+  7: 'దాంపత్యంలో అసంతృప్తి, భాగస్వామ్య సమస్యలు, వివాదాలు',
+  8: 'ఆకస్మిక ధనలాభం, గృహ సౌఖ్యం, ఆయుష్షు వృద్ధి',
+  9: 'భాగ్యోదయం, ధర్మ కార్యాలు, దైవ దర్శనం, శ్రేయస్సు',
+  10: 'పరువు నష్టం, వృత్తిలో కలహాలు, అసంతృప్తి',
+  11: 'మిత్రుల సహకారం, నూతన ఆదాయం, కోరికల సిద్ధి',
+  12: 'ధన లాభం, శయ్య సౌఖ్యం, విలాస వస్తువుల ప్రాప్తి'
+};
+
 const SATURN_HOUSE_RESULT_TE: Record<number, string> = {
   1: 'కంటక శని ప్రభావం — ఆరోగ్య జాగ్రత్త, మానసిక ఒత్తిడి',
-  2: 'కంటక శని — ఆర్థిక పరిమితి, కుటుంబ బాధ్యతలు పెరగడం',
+  2: 'ద్వితీయ శని — ఆర్థిక పరిమితి, కుటుంబ బాధ్యతలు పెరగడం',
   3: 'అనుకూల సంచారం — పరాక్రమం, ప్రయత్నశక్తి, సోదర సంబంధాలలో స్థిరత్వం',
-  4: 'అష్టమ శని-సదృశ ప్రభావం — గృహ/మాతృ సంబంధిత ఆందోళన, స్థల మార్పులు',
+  4: 'అర్ధాష్టమ శని — గృహ/మాతృ సంబంధిత ఆందోళన, స్థల మార్పులు',
   5: 'సంతానం, విద్య పట్ల ఆలస్యం లేదా జాగ్రత్త అవసరం',
   6: 'అత్యంత అనుకూలం — శత్రు/రోగ నివారణ, పోటీలలో విజయం, రుణ విముక్తి',
   7: 'భాగస్వామ్య సంబంధాలలో పరీక్ష, ఓర్పు అవసరం',
@@ -153,76 +245,112 @@ const SATURN_HOUSE_RESULT_TE: Record<number, string> = {
   9: 'భాగ్య స్థానంపై శని ప్రభావం — పెద్దల నుండి దూరం, భాగ్యోదయ ఆలస్యం',
   10: 'వృత్తిపరమైన శ్రమ ఫలితం, బాధ్యతలు పెరుగుట, స్థిరమైన ప్రగతి',
   11: 'అత్యంత అనుకూలం — లాభాలు, కోరికల నెరవేర్పు, ఆదాయ వృద్ధి',
-  12: 'ఏలినాటి శని ప్రారంభ దశ — వ్యయం, విదేశీ సంబంధాలు, విశ్రాంతి అవసరం'
-};
-
-const JUPITER_HOUSE_RESULT_TE: Record<number, string> = {
-  1: 'ఆత్మవిశ్వాసం, ఆరోగ్యం, వ్యక్తిత్వ వికాసం',
-  2: 'ధన వృద్ధి, కుటుంబ శ్రేయస్సు, వాక్ మధురత్వం',
-  3: 'ప్రయత్నశక్తి పెరుగుదల, సోదర సంబంధాల్లో మేలు',
-  4: 'గృహ సౌఖ్యం, మాతృ సంబంధిత శుభం, స్థిరాస్తి యోగం',
-  5: 'సంతానం, విద్య, బుద్ధి వికాసానికి అత్యంత అనుకూలం',
-  6: 'సవాళ్లు — అనవసర వ్యయం, ఆరోగ్య జాగ్రత్త, రుణ భారం',
-  7: 'భాగస్వామ్య సంబంధాలు, వివాహ విషయాల్లో శుభం',
-  8: 'ఆకస్మిక పరిణామాలు, ఆధ్యాత్మిక అభివృద్ధి, పరిశోధనా ఆసక్తి',
-  9: 'అత్యంత అనుకూలం — భాగ్యోదయం, గురు-పెద్దల ఆశీస్సులు, ధర్మ కార్యాలు',
-  10: 'వృత్తిపరమైన ఉన్నతి, గుర్తింపు, నూతన బాధ్యతలు',
-  11: 'అత్యంత అనుకూలం — లాభాలు, ఆదాయ వృద్ధి, కోరికల నెరవేర్పు',
-  12: 'వ్యయం, విదేశీ ప్రయాణాలు, ఆధ్యాత్మిక చింతన'
+  12: 'వ్యయ శని / ఏలినాటి శని ప్రారంభం — వ్యయం, ప్రవాసం, విశ్రాంతి అవసరం'
 };
 
 const RAHU_HOUSE_RESULT_TE: Record<number, string> = {
-  1: 'అనిశ్చితి, కొత్త ఆలోచనలు, అనూహ్య మార్పులు',
-  2: 'ఆర్థిక ఒడిదుడుకులు, కుటుంబంలో అపార్థాలు',
-  3: 'సాహసం, పోటీతత్వం, అనుకూల ప్రయత్నశక్తి',
+  1: 'లగ్న రాహువు — అనిశ్చితి, మానసిక ఒత్తిడి, అనూహ్య మార్పులు',
+  2: 'ద్వితీయ రాహువు — ఆర్థిక ఒడిదుడుకులు, కుటుంబంలో అపార్థాలు',
+  3: 'అనుకూలం — సాహసం, పోటీతత్వం, అనుకూల ప్రయత్నశక్తి',
   4: 'మానసిక అశాంతి, గృహ మార్పులు, తల్లి ఆరోగ్యంపై శ్రద్ధ అవసరం',
   5: 'సంతానం పట్ల ఆందోళన, ఊహాజనిత ఆలోచనలు, పెట్టుబడి విషయాల్లో జాగ్రత్త',
-  6: 'శత్రు జయం, పోటీలలో అనూహ్య విజయం, ఆరోగ్యంలో ఇన్ఫెక్షన్ జాగ్రత్త',
+  6: 'అనుకూలం — శత్రు జయం, పోటీలలో అనూహ్య విజయం, ఆరోగ్యంలో జాగ్రత్త',
   7: 'భాగస్వామ్య సంబంధాలలో సంక్లిష్టత, విదేశీ సంబంధాలు',
   8: 'ఆకస్మిక పరిణామాలు, రహస్య విషయాలపై ఆసక్తి, ఆరోగ్య జాగ్రత్త',
   9: 'సంప్రదాయేతర ఆలోచనలు, విదేశీ యాత్రలు, గురుజనుల పట్ల భిన్నాభిప్రాయం',
   10: 'వృత్తిలో ఆకస్మిక మార్పులు, ఆశించని అవకాశాలు లేదా అవరోధాలు',
-  11: 'లాభాలు, నూతన స్నేహాలు, అనూహ్య ఆదాయ మార్గాలు',
+  11: 'అనుకూలం — లాభాలు, నూతన స్నేహాలు, అనూహ్య ఆదాయ మార్గాలు',
   12: 'నిద్రలేమి, వ్యయం, విదేశీ సంబంధిత విషయాలు, ఆధ్యాత్మిక అన్వేషణ'
 };
 
 const KETU_HOUSE_RESULT_TE: Record<number, string> = {
   1: 'ఆత్మపరిశీలన, శారీరక బలహీనత జాగ్రత్త, నిర్లిప్తత',
   2: 'ఆర్థిక విషయాల్లో అనాసక్తి, వాక్కులో జాగ్రత్త అవసరం',
-  3: 'ప్రయత్నశక్తి తగ్గడం, సోదరులతో దూరం',
+  3: 'అనుకూలం — ప్రయత్నశక్తి, అంతర్దృష్టి, ఆధ్యాత్మిక ధైర్యం',
   4: 'మానసిక అశాంతి, గృహ సంబంధిత నిర్లిప్తత',
   5: 'సంతానం పట్ల ప్రత్యేక శ్రద్ధ అవసరం, ఆధ్యాత్మిక మొగ్గు',
   6: 'శత్రు/రోగ నివారణకు మిశ్రమ ఫలితం, ఆకస్మిక ఉపశమనం',
-  7: 'భాగస్వామ్య సంబంధాలలో దూరం లేదా అపార్థాలు',
+  7: 'భాగస్వామ్య సంబంధాలలో దూరం లేదా అపార్థాలు, నిర్లిప్తత',
   8: 'ఆధ్యాత్మిక అంతర్దృష్టి, రహస్య శాస్త్రాల పట్ల ఆసక్తి',
   9: 'సాంప్రదాయ విశ్వాసాలలో మార్పు, గురు మార్గదర్శకత్వం',
   10: 'వృత్తిలో అనిశ్చితి లేదా దిశ మార్పు',
-  11: 'లాభాలలో హెచ్చుతగ్గులు, ఆకస్మిక ఉపశమనం, ఆధ్యాత్మిక సంఘాలు',
+  11: 'అనుకూలం — లాభాలు, ఆధ్యాత్మిక సాధన, ఆకస్మిక ఉపశమనం',
   12: 'మోక్ష చింతన, ఏకాంతం, ఆధ్యాత్మిక సాధనకు అనుకూలం'
 };
 
-const SATURN_SUPPORTIVE_HOUSES = [3, 6, 11];
-const SATURN_CHALLENGING_HOUSES = [1, 2, 4, 8, 12];
-const JUPITER_SUPPORTIVE_HOUSES = [2, 5, 7, 9, 11];
-const JUPITER_CHALLENGING_HOUSES = [6, 8, 12];
+// ─────────────────────────────────────────────────────────────────────────────
+// CLASSICAL GOCHARA CLASSIFICATIONS (Phaladeepika Ch. 26)
+// ─────────────────────────────────────────────────────────────────────────────
+function classifySun(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([3, 6, 10, 11].includes(h)) return 'Supportive';
+  return 'Challenging';
+}
 
-function classifySaturn(house: number): 'Supportive' | 'Neutral' | 'Challenging' {
-  if (SATURN_SUPPORTIVE_HOUSES.includes(house)) return 'Supportive';
-  if (SATURN_CHALLENGING_HOUSES.includes(house)) return 'Challenging';
+function classifyMoon(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([1, 3, 6, 7, 10, 11].includes(h)) return 'Supportive';
+  if (h === 9) return 'Neutral';
+  return 'Challenging';
+}
+
+function classifyMars(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([3, 6, 11].includes(h)) return 'Supportive';
+  if (h === 10) return 'Neutral';
+  return 'Challenging';
+}
+
+function classifyMercury(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([2, 4, 6, 8, 10, 11].includes(h)) return 'Supportive';
+  if ([3, 9].includes(h)) return 'Neutral';
+  return 'Challenging';
+}
+
+function classifyJupiter(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([2, 5, 7, 9, 11].includes(h)) return 'Supportive';
+  if ([6, 8, 12].includes(h)) return 'Challenging';
   return 'Neutral';
 }
-function classifyJupiter(house: number): 'Supportive' | 'Neutral' | 'Challenging' {
-  if (JUPITER_SUPPORTIVE_HOUSES.includes(house)) return 'Supportive';
-  if (JUPITER_CHALLENGING_HOUSES.includes(house)) return 'Challenging';
+
+function classifyVenus(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([1, 2, 3, 4, 5, 8, 9, 11, 12].includes(h)) return 'Supportive';
+  return 'Challenging'; // 6, 7, 10
+}
+
+function classifySaturn(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([3, 6, 11].includes(h)) return 'Supportive';
+  if ([1, 2, 4, 8, 12].includes(h)) return 'Challenging';
   return 'Neutral';
 }
-// Fast movers (Sun/Mars/Mercury/Venus) use the generic Kendra-Trikona-Upachaya pattern
-function classifyGeneric(house: number): 'Supportive' | 'Neutral' | 'Challenging' {
-  if ([3, 6, 10, 11].includes(house)) return 'Supportive';   // Upachaya
-  if ([1, 4, 7, 10].includes(house)) return 'Neutral';        // Kendra (already covered 10 above)
-  if ([6, 8, 12].includes(house)) return 'Challenging';
-  return 'Neutral';
+
+function classifyRahu(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([3, 6, 11].includes(h)) return 'Supportive';
+  return 'Challenging';
 }
+
+function classifyKetu(h: number): 'Supportive' | 'Neutral' | 'Challenging' {
+  if ([3, 11].includes(h)) return 'Supportive';
+  if (h === 6) return 'Neutral';
+  return 'Challenging';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLASSICAL VEDHA (OBSTRUCTION) PAIRS (Phaladeepika Ch. 26)
+// When planet P is in a favorable house from Moon, but planet Q occupies its
+// Vedha house, the favorable transit result is obstructed.
+// Classical exceptions:
+// - Sun and Saturn do not cause Vedha to each other
+// - Moon and Mercury do not cause Vedha to each other
+// ─────────────────────────────────────────────────────────────────────────────
+const VEDHA_PAIRS: Record<PlanetKey, Partial<Record<number, number>>> = {
+  Sun:     { 3: 9, 6: 12, 10: 4, 11: 5 },
+  Moon:    { 1: 5, 3: 9, 6: 12, 7: 2, 10: 4, 11: 8 },
+  Mars:    { 3: 12, 6: 9, 11: 5 },
+  Mercury: { 2: 5, 4: 3, 6: 9, 8: 1, 10: 8, 11: 12 },
+  Jupiter: { 2: 12, 5: 4, 7: 8, 9: 10, 11: 3 },
+  Venus:   { 1: 8, 2: 7, 3: 1, 4: 10, 5: 9, 8: 5, 9: 11, 11: 6, 12: 3 },
+  Saturn:  { 3: 12, 6: 9, 11: 5 },
+  Rahu:    { 3: 12, 6: 9, 11: 5 },
+  Ketu:    { 3: 12, 11: 5 }
+};
 
 function calculateHouseFromMoon(transitSign: string, moonSign: string): number {
   const tIdx = SIGN_NAMES.indexOf(transitSign as any);
@@ -273,30 +401,57 @@ export function computeLiveTransitSnapshot(
   };
 
   const positions = {} as Record<PlanetKey, LiveTransitPosition>;
+  const houseOccupancy: Record<number, PlanetKey[]> = {};
+  for (let h = 1; h <= 12; h++) houseOccupancy[h] = [];
 
+  // Pass 1: calculate positions, houseFromMoon, and base classification
   (Object.keys(rawTropical) as PlanetKey[]).forEach((planet) => {
     const tropical = rawTropical[planet];
     const sidereal = toSidereal(tropical, ayanamsa);
     const { sign, degreeInSign } = signOf(sidereal);
     const houseFromMoon = calculateHouseFromMoon(sign, moonSign);
+    houseOccupancy[houseFromMoon].push(planet);
 
     let classification: 'Supportive' | 'Neutral' | 'Challenging';
     let classicalResultTelugu: string;
-    if (planet === 'Saturn') {
-      classification = classifySaturn(houseFromMoon);
-      classicalResultTelugu = SATURN_HOUSE_RESULT_TE[houseFromMoon];
-    } else if (planet === 'Jupiter') {
-      classification = classifyJupiter(houseFromMoon);
-      classicalResultTelugu = JUPITER_HOUSE_RESULT_TE[houseFromMoon];
-    } else if (planet === 'Rahu') {
-      classification = classifyGeneric(houseFromMoon);
-      classicalResultTelugu = RAHU_HOUSE_RESULT_TE[houseFromMoon];
-    } else if (planet === 'Ketu') {
-      classification = classifyGeneric(houseFromMoon);
-      classicalResultTelugu = KETU_HOUSE_RESULT_TE[houseFromMoon];
-    } else {
-      classification = classifyGeneric(houseFromMoon);
-      classicalResultTelugu = `${houseFromMoon}వ ఇంటిలో సంచారం — ఆయా జీవిత రంగాలపై ప్రభావం చూపుతుంది`;
+
+    switch (planet) {
+      case 'Sun':
+        classification = classifySun(houseFromMoon);
+        classicalResultTelugu = SUN_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Moon':
+        classification = classifyMoon(houseFromMoon);
+        classicalResultTelugu = MOON_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Mars':
+        classification = classifyMars(houseFromMoon);
+        classicalResultTelugu = MARS_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Mercury':
+        classification = classifyMercury(houseFromMoon);
+        classicalResultTelugu = MERCURY_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Jupiter':
+        classification = classifyJupiter(houseFromMoon);
+        classicalResultTelugu = JUPITER_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Venus':
+        classification = classifyVenus(houseFromMoon);
+        classicalResultTelugu = VENUS_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Saturn':
+        classification = classifySaturn(houseFromMoon);
+        classicalResultTelugu = SATURN_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Rahu':
+        classification = classifyRahu(houseFromMoon);
+        classicalResultTelugu = RAHU_HOUSE_RESULT_TE[houseFromMoon];
+        break;
+      case 'Ketu':
+        classification = classifyKetu(houseFromMoon);
+        classicalResultTelugu = KETU_HOUSE_RESULT_TE[houseFromMoon];
+        break;
     }
 
     positions[planet] = {
@@ -313,6 +468,31 @@ export function computeLiveTransitSnapshot(
     };
   });
 
+  // Pass 2: Classical Vedha (Obstruction) Check
+  (Object.keys(positions) as PlanetKey[]).forEach((planet) => {
+    const pos = positions[planet];
+    if (pos.classification === 'Supportive') {
+      const vedhaHouse = VEDHA_PAIRS[planet]?.[pos.houseFromMoon];
+      if (vedhaHouse) {
+        const obstructingPlanets = houseOccupancy[vedhaHouse].filter((obs) => {
+          // Classical exceptions:
+          if ((planet === 'Sun' && obs === 'Saturn') || (planet === 'Saturn' && obs === 'Sun')) return false;
+          if ((planet === 'Moon' && obs === 'Mercury') || (planet === 'Mercury' && obs === 'Moon')) return false;
+          return obs !== planet;
+        });
+
+        if (obstructingPlanets.length > 0) {
+          const obsName = obstructingPlanets[0];
+          pos.isObstructed = true;
+          pos.vedhaObstructedBy = obsName;
+          pos.vedhaHouse = vedhaHouse;
+          pos.classicalResultTelugu += ` (వేధ: ${PLANET_NAMES_TELUGU[obsName]} వలన శుభఫలితం తాత్కాలిక అవరోధం)`;
+          pos.classification = 'Neutral'; // Obstruction moderates supportive transit to neutral
+        }
+      }
+    }
+  });
+
   return {
     computedAtIso: queryDate.toISOString(),
     ayanamsa,
@@ -322,19 +502,31 @@ export function computeLiveTransitSnapshot(
 }
 
 /**
- * Renders the live snapshot as the Telugu Gochara prompt block that should be
- * injected into the Quick Astro Engine system prompt — REPLACING the old
- * hardcoded static transit paragraph.
+ * Renders the live snapshot as the structured Gochara prompt block.
  */
 export function renderGocharaPromptBlock(snapshot: LiveTransitSnapshot): string {
   const order: PlanetKey[] = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
   const lines = order.map((p) => {
     const pos = snapshot.positions[p];
-    return `   - ${pos.planetTelugu} (${p}): ${pos.signTelugu} రాశిలో (${pos.degreeInSign.toFixed(1)}°) — చంద్రుని నుండి ${pos.houseFromMoon}వ ఇల్లు [${pos.classification}]. ${pos.classicalResultTelugu}`;
+    const vedhaTag = pos.isObstructed ? ` [వేధ: ${pos.vedhaObstructedBy}]` : '';
+    return `  • ${pos.planetTelugu.padEnd(8)} (${p.padEnd(7)}) → ${pos.sign.padEnd(11)} H${pos.houseFromMoon.toString().padEnd(2)} [${pos.classification}] — ${pos.classicalResultTelugu}${vedhaTag}`;
   });
 
-  return `2. Gochara (Transit) analysis from Moon Sign (Chandra Rasi - ${snapshot.moonSignUsedForHouses}) for ALL 9 PLANETS — REAL POSITIONS COMPUTED FOR ${snapshot.computedAtIso.split('T')[0]} (Lahiri Ayanamsa ${snapshot.ayanamsa.toFixed(2)}°, do not use any other transit data, do not fabricate positions):
+  const supportiveCount = order.filter(p => snapshot.positions[p].classification === 'Supportive').length;
+  const challengingCount = order.filter(p => snapshot.positions[p].classification === 'Challenging').length;
+  const neutralCount = order.length - supportiveCount - challengingCount;
+
+  let verdict = 'NEUTRAL';
+  if (supportiveCount >= 4 && challengingCount <= 2) verdict = 'SUPPORTIVE';
+  else if (challengingCount >= 4) verdict = 'CHALLENGING';
+
+  return `LAYER 3: GOCHARA — ALL 9 PLANETS from Moon Sign (Chandra Rasi: ${snapshot.moonSignUsedForHouses})
+Computed: ${snapshot.computedAtIso.split('T')[0]} | Ayanamsa: ${snapshot.ayanamsa.toFixed(2)}° (Lahiri)
+
+ALL 9 PLANETS — GOCHARA POSITIONS:
 ${lines.join('\n')}
 
-TRANSIT ACCURACY NOTE: Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn positions above are computed from VSOP87/lunar ephemeris for the exact query date — treat as ground truth. Rahu/Ketu use the Mean Node (standard for most published Vedic panchangams); if the native's preferred system uses the True Node, note this as a minor possible variance of up to ~1.5°, not a contradiction.`;
+GOCHARA VERDICT: ${verdict} (${supportiveCount} supportive, ${challengingCount} challenging, ${neutralCount} neutral)
+
+TRANSIT ACCURACY NOTE: Sidereal positions computed from VSOP87/lunar ephemeris (mean node for Rahu/Ketu) for the exact query date.`;
 }

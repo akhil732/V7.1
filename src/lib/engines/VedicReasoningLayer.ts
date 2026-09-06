@@ -22,7 +22,13 @@
 
 import { BirthDetails } from '../../types';
 import { calculateActiveDasha, DashaData, Dasha } from './DashaEngine';
-import { computeLiveTransitSnapshot, LiveTransitSnapshot, LiveTransitPosition } from './LiveTransitEngine';
+import {
+  computeLiveTransitSnapshot,
+  LiveTransitSnapshot,
+  LiveTransitPosition,
+  PLANET_NAMES_TELUGU,
+  PlanetKey
+} from './LiveTransitEngine';
 
 // ─── DOMAIN & SIGN CONSTANTS ──────────────────────────────────────────────────
 
@@ -183,6 +189,7 @@ export interface TransitConfirmation {
   saturnTransit: TransitPlanetRole;
   rahuTransit: TransitPlanetRole;
   ketuTransit?: TransitPlanetRole;
+  allPlanets?: Record<string, TransitPlanetRole>;
   summary: string;
 }
 
@@ -220,6 +227,7 @@ export interface VedicReasoningContext {
   natalPromise: NatalPromise;
   dashaActivation: DashaActivation;
   transitConfirmation: TransitConfirmation;
+  transitSnapshot?: LiveTransitSnapshot;
   historicalEventWindows: HistoricalEventWindow[];
   futureTimingWindows: FutureTimingWindow[];
   overallSignal: 'VERY_FAVORABLE' | 'FAVORABLE' | 'MIXED_DELAY' | 'CHALLENGING' | 'CRITICAL_CAUTION';
@@ -658,6 +666,7 @@ export class VedicReasoningLayer {
       natalPromise,
       dashaActivation,
       transitConfirmation,
+      transitSnapshot,
       historicalEventWindows,
       futureTimingWindows,
       overallSignal,
@@ -987,30 +996,74 @@ export class VedicReasoningLayer {
   ): TransitConfirmation {
     const positions: any = transitSnapshot.positions || {};
 
+    // ── Slow planets (set macro climate) ────────────────────────────────────
     const jupPos = positions.Jupiter || this.mockTransitPos('Jupiter', 'Cancer', 4, 11, 'Supportive');
     const satPos = positions.Saturn || this.mockTransitPos('Saturn', 'Pisces', 12, 1, 'Challenging');
     const rahuPos = positions.Rahu || this.mockTransitPos('Rahu', 'Aquarius', 11, 12, 'Neutral');
     const ketuPos = positions.Ketu;
 
-    const jupRole = this.mapTransitRole(jupPos, ascendantIndex, domain, 'Jupiter');
-    const satRole = this.mapTransitRole(satPos, ascendantIndex, domain, 'Saturn');
+    // ── Fast planets (act as triggers) ──────────────────────────────────────
+    const sunPos  = positions.Sun;
+    const moonPos = positions.Moon;
+    const marsPos = positions.Mars;
+    const mercPos = positions.Mercury;
+    const venPos  = positions.Venus;
+
+    const jupRole  = this.mapTransitRole(jupPos, ascendantIndex, domain, 'Jupiter');
+    const satRole  = this.mapTransitRole(satPos, ascendantIndex, domain, 'Saturn');
     const rahuRole = this.mapTransitRole(rahuPos, ascendantIndex, domain, 'Rahu');
     const ketuRole = ketuPos ? this.mapTransitRole(ketuPos, ascendantIndex, domain, 'Ketu') : undefined;
 
-    // Check overall transit verdict
-    let verdict: TransitConfirmation['verdict'] = 'neutral';
-    const supportiveCount = [jupRole, satRole, rahuRole].filter((r) => r.classification === 'Supportive').length;
-    const challengingCount = [jupRole, satRole, rahuRole].filter((r) => r.classification === 'Challenging').length;
+    // Map fast planets if available
+    const sunRole  = sunPos  ? this.mapTransitRole(sunPos,  ascendantIndex, domain, 'Sun')     : undefined;
+    const moonRole = moonPos ? this.mapTransitRole(moonPos, ascendantIndex, domain, 'Moon')    : undefined;
+    const marsRole = marsPos ? this.mapTransitRole(marsPos, ascendantIndex, domain, 'Mars')    : undefined;
+    const mercRole = mercPos ? this.mapTransitRole(mercPos, ascendantIndex, domain, 'Mercury') : undefined;
+    const venRole  = venPos  ? this.mapTransitRole(venPos,  ascendantIndex, domain, 'Venus')   : undefined;
 
-    if (supportiveCount >= 2 && challengingCount === 0) {
+    // ── Overall verdict — all slow + fast planets ────────────────────────────
+    const allRoles = [jupRole, satRole, rahuRole, ketuRole, sunRole, moonRole, marsRole, mercRole, venRole]
+      .filter(Boolean) as ReturnType<typeof this.mapTransitRole>[];
+
+    const supportiveCount  = allRoles.filter(r => r.classification === 'Supportive').length;
+    const challengingCount = allRoles.filter(r => r.classification === 'Challenging').length;
+
+    let verdict: TransitConfirmation['verdict'] = 'neutral';
+    if (supportiveCount >= 3 && challengingCount === 0) {
       verdict = 'confirming';
-    } else if (challengingCount >= 2) {
+    } else if (challengingCount >= 3) {
       verdict = 'contradicting';
-    } else if (jupRole.classification === 'Supportive') {
+    } else if (jupRole.classification === 'Supportive' && satRole.classification !== 'Challenging') {
       verdict = 'confirming';
+    } else if (jupRole.classification === 'Challenging' && satRole.classification === 'Challenging') {
+      verdict = 'contradicting';
     }
 
-    const summary = `Jupiter transits ${jupRole.currentSign} (H${jupRole.houseFromLagna} from Lagna, H${jupRole.houseFromMoon} from Moon) — ${jupRole.classification}. Saturn transits ${satRole.currentSign} (H${satRole.houseFromLagna} from Lagna, H${satRole.houseFromMoon} from Moon) — ${satRole.classification}. Rahu in ${rahuRole.currentSign}. Transit synthesis verdict is ${verdict.toUpperCase()}.`;
+    // ── All 9 planets map ────────────────────────────────────────────────────
+    const allPlanets: Record<string, TransitPlanetRole> = {};
+    const planetKeys = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+    for (const p of planetKeys) {
+      if (positions[p]) {
+        allPlanets[p] = this.mapTransitRole(positions[p], ascendantIndex, domain, p);
+      }
+    }
+    if (jupRole) allPlanets.Jupiter = jupRole;
+    if (satRole) allPlanets.Saturn = satRole;
+    if (rahuRole) allPlanets.Rahu = rahuRole;
+    if (ketuRole) allPlanets.Ketu = ketuRole;
+
+    // ── Summary with all 9 planets ───────────────────────────────────────────
+    const slowSummary = `Jupiter → ${jupRole.currentSign} (H${jupRole.houseFromMoon} Moon) [${jupRole.classification}]; Saturn → ${satRole.currentSign} (H${satRole.houseFromMoon} Moon) [${satRole.classification}]; Rahu → ${rahuRole.currentSign} (H${rahuRole.houseFromMoon} Moon) [${rahuRole.classification}]${ketuRole ? `; Ketu → ${ketuRole.currentSign} (H${ketuRole.houseFromMoon} Moon) [${ketuRole.classification}]` : ''}.`;
+
+    const fastParts: string[] = [];
+    if (sunRole)  fastParts.push(`Sun → ${sunRole.currentSign} (H${sunRole.houseFromMoon}) [${sunRole.classification}]`);
+    if (moonRole) fastParts.push(`Moon → ${moonRole.currentSign} (H${moonRole.houseFromMoon}) [${moonRole.classification}]`);
+    if (marsRole) fastParts.push(`Mars → ${marsRole.currentSign} (H${marsRole.houseFromMoon}) [${marsRole.classification}]`);
+    if (mercRole) fastParts.push(`Mercury → ${mercRole.currentSign} (H${mercRole.houseFromMoon}) [${mercRole.classification}]`);
+    if (venRole)  fastParts.push(`Venus → ${venRole.currentSign} (H${venRole.houseFromMoon}) [${venRole.classification}]`);
+    const fastSummary = fastParts.length > 0 ? ` Fast-planet triggers: ${fastParts.join('; ')}.` : '';
+
+    const summary = `GOCHARA — ALL 9 PLANETS (from Moon sign). Slow planets (macro): ${slowSummary}${fastSummary} Overall transit verdict: ${verdict.toUpperCase()}.`;
 
     return {
       verdict,
@@ -1018,6 +1071,7 @@ export class VedicReasoningLayer {
       saturnTransit: satRole,
       rahuTransit: rahuRole,
       ketuTransit: ketuRole,
+      allPlanets,
       summary
     };
   }
@@ -1033,11 +1087,12 @@ export class VedicReasoningLayer {
     const houseFromMoon = pos.houseFromMoon || 1;
 
     const config = DOMAIN_CONFIG[domain];
-    const touchesDomainHouse = config.primaryHouses.includes(houseFromLagna);
+    const touchesDomainFromMoon = config.primaryHouses.includes(houseFromMoon);
+    const touchesDomainHouse = touchesDomainFromMoon;
 
-    let roleDescription = `${planetName} in ${pos.sign} (${pos.degreeInSign.toFixed(1)}°) transiting H${houseFromLagna} from Lagna and H${houseFromMoon} from Moon.`;
-    if (touchesDomainHouse) {
-      roleDescription += ` Directly activates primary domain house H${houseFromLagna}.`;
+    let roleDescription = `${planetName} in ${pos.sign} (${pos.degreeInSign.toFixed(1)}°) transiting H${houseFromMoon} from Moon (H${houseFromLagna} from Lagna) [${pos.classification}]. ${pos.classicalResultTelugu || ''}`;
+    if (touchesDomainFromMoon) {
+      roleDescription += ` Directly activates domain house H${houseFromMoon} from Moon.`;
     }
 
     return {
@@ -1280,10 +1335,70 @@ export class VedicReasoningLayer {
  */
 export function buildVedicReasoningSection(
   ctx: VedicReasoningContext,
-  language: string = 'en'
+  language: string = 'en',
+  transitSnapshotInput?: LiveTransitSnapshot | Record<string, LiveTransitPosition>
 ): string {
   const isTe = language === 'te';
   const isHi = language === 'hi';
+
+  const snapshot: LiveTransitSnapshot | undefined =
+    transitSnapshotInput && 'computedAtIso' in transitSnapshotInput
+      ? (transitSnapshotInput as LiveTransitSnapshot)
+      : ctx.transitSnapshot;
+
+  const positionsRecord: Record<string, LiveTransitPosition> | undefined =
+    transitSnapshotInput && !('computedAtIso' in transitSnapshotInput)
+      ? (transitSnapshotInput as Record<string, LiveTransitPosition>)
+      : snapshot?.positions;
+
+  const getPeriodLordTransitDesc = (label: string, planetName: string): string => {
+    const pos = positionsRecord?.[planetName];
+    const role = ctx.transitConfirmation.allPlanets?.[planetName];
+    if (pos) {
+      const vedhaTag = pos.isObstructed ? ` [వేధ: ${pos.vedhaObstructedBy} వలన అవరోధం]` : '';
+      return `  • ${label.padEnd(9)} (${planetName}) → ${pos.sign.padEnd(10)} H${pos.houseFromMoon} from Moon [${pos.classification}] — ${pos.classicalResultTelugu}${vedhaTag}`;
+    }
+    if (role) {
+      return `  • ${label.padEnd(9)} (${planetName}) → ${role.currentSign.padEnd(10)} H${role.houseFromMoon} from Moon [${role.classification}] — ${role.roleDescription}`;
+    }
+    return `  • ${label.padEnd(9)} (${planetName}) → Transit position not available in chart data`;
+  };
+
+  const mdPlanet = ctx.dashaActivation.mahadasha.planet;
+  const adPlanet = ctx.dashaActivation.antardasha.planet;
+  const pdPlanet = ctx.dashaActivation.pratyantardasha?.planet;
+
+  const periodLordLines = [
+    getPeriodLordTransitDesc('MD Lord', mdPlanet),
+    getPeriodLordTransitDesc('AD Lord', adPlanet),
+    ...(pdPlanet ? [getPeriodLordTransitDesc('PD Lord', pdPlanet)] : [])
+  ].join('\n');
+
+  const planetOrder: PlanetKey[] = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+  const allPlanetLines = planetOrder
+    .map((p) => {
+      const pos = positionsRecord?.[p];
+      const role = ctx.transitConfirmation.allPlanets?.[p];
+      const teName = PLANET_NAMES_TELUGU[p] || p;
+      if (pos) {
+        const vedhaTag = pos.isObstructed ? ` [వేధ: ${pos.vedhaObstructedBy} వలన అవరోధం]` : '';
+        return `  • ${teName.padEnd(8)} (${p.padEnd(7)}) → ${pos.sign.padEnd(11)} H${pos.houseFromMoon.toString().padEnd(2)} [${pos.classification}] — ${pos.classicalResultTelugu}${vedhaTag}`;
+      }
+      if (role) {
+        return `  • ${teName.padEnd(8)} (${p.padEnd(7)}) → ${role.currentSign.padEnd(11)} H${role.houseFromMoon.toString().padEnd(2)} [${role.classification}] — ${role.roleDescription}`;
+      }
+      if (p === 'Jupiter') {
+        return `  • ${teName.padEnd(8)} (Jupiter) → ${ctx.transitConfirmation.jupiterTransit.currentSign.padEnd(11)} H${ctx.transitConfirmation.jupiterTransit.houseFromMoon.toString().padEnd(2)} [${ctx.transitConfirmation.jupiterTransit.classification}] — ${ctx.transitConfirmation.jupiterTransit.roleDescription}`;
+      }
+      if (p === 'Saturn') {
+        return `  • ${teName.padEnd(8)} (Saturn ) → ${ctx.transitConfirmation.saturnTransit.currentSign.padEnd(11)} H${ctx.transitConfirmation.saturnTransit.houseFromMoon.toString().padEnd(2)} [${ctx.transitConfirmation.saturnTransit.classification}] — ${ctx.transitConfirmation.saturnTransit.roleDescription}`;
+      }
+      if (p === 'Rahu') {
+        return `  • ${teName.padEnd(8)} (Rahu   ) → ${ctx.transitConfirmation.rahuTransit.currentSign.padEnd(11)} H${ctx.transitConfirmation.rahuTransit.houseFromMoon.toString().padEnd(2)} [${ctx.transitConfirmation.rahuTransit.classification}] — ${ctx.transitConfirmation.rahuTransit.roleDescription}`;
+      }
+      return `  • ${teName.padEnd(8)} (${p.padEnd(7)}) → Position not available in chart data`;
+    })
+    .join('\n');
 
   const domainTitle = ctx.domain.toUpperCase();
   const trikaLines =
@@ -1341,11 +1456,15 @@ LAYER 2: DASHA ACTIVATION (Current Period Timeline)
 • Double Trika Flag: ${ctx.dashaActivation.doubleTrikaFlag ? 'ACTIVE (Testing Phase)' : 'INACTIVE'}
 • Dasha Summary: ${ctx.dashaActivation.summary}
 
-LAYER 3: SKY CONFIRMATION (Gochara Transits)
+LAYER 3: SKY CONFIRMATION (Gochara Transits from Moon Sign)
 • Verdict: ${ctx.transitConfirmation.verdict.toUpperCase()}
-• Jupiter: ${ctx.transitConfirmation.jupiterTransit.roleDescription}
-• Saturn: ${ctx.transitConfirmation.saturnTransit.roleDescription}
-• Rahu: ${ctx.transitConfirmation.rahuTransit.roleDescription}
+
+ACTIVE PERIOD LORDS — TRANSIT FOCUS:
+${periodLordLines}
+
+ALL 9 PLANETS — GOCHARA POSITIONS:
+${allPlanetLines}
+
 • Transit Summary: ${ctx.transitConfirmation.summary}
 
 HISTORICAL VALIDATION QUESTIONS (Ask client to verify chart accuracy):

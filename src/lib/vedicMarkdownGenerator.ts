@@ -12,7 +12,7 @@ function generateVimshottariDashaMarkdownSection(
   person: BirthDetails | SavedPerson,
   horoscopeData?: any
 ): string {
-  const birthDateStr = person.date || '1996-11-01';
+  const birthDateStr = person.date || '1996-11-11';
   const timeline = getFullDashaTimeline(horoscopeData, birthDateStr);
 
   if (!timeline || timeline.length === 0) {
@@ -94,7 +94,7 @@ export function generateVedicBirthChartMarkdown(
 
 function generateAkhilBenchmarkMarkdown(name: string, person?: BirthDetails | SavedPerson, horoscopeData?: any): string {
   const dashaSection = generateVimshottariDashaMarkdownSection(
-    person || { name, date: '1996-11-01', time: '13:50', place: 'Jaggampeta, AP', gender: 'Male', approximateTime: false, latitude: 17.17259, longitude: 82.05787, timezone: 5.5 },
+    person || { name, date: '1996-11-11', time: '13:50', place: 'Jaggampeta, AP', gender: 'Male', approximateTime: false, latitude: 17.17259, longitude: 82.05787, timezone: 5.5 },
     horoscopeData
   );
   return `> Pre-computed Vedic (Parashari) kundali data structured for AI parsing. Upload this file as project knowledge or paste at the start of a chat. All planetary positions use the Lahiri ayanamsa.
@@ -143,7 +143,7 @@ function generateAkhilBenchmarkMarkdown(name: string, person?: BirthDetails | Sa
 | Signature | Value |
 |---|---|
 | Ascendant (Lagna) | Aquarius |
-| Ascendant Degree | 320°55'58" (20°55'58" Aquarius) |
+| Ascendant Degree | 21°28'05" (21-28-05, Aquarius) |
 | Ascendant Nakshatra | Purva Bhadrapada, Pada 1 |
 | Ascendant Lord | Saturn |
 | Moon Sign (Rashi) | Libra |
@@ -184,15 +184,19 @@ function generateAkhilBenchmarkMarkdown(name: string, person?: BirthDetails | Sa
 
 | Planet | Sign | House | Degree | Nakshatra | Pada | Nakshatra Lord | Dignity | Motion | Combustion | Functional Nature |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sun | Libra | 9 | 25°24'42" | Vishakha | 2 | Jupiter | Debilitated | Direct | N/A | Functional Malefic |
-| Moon | Libra | 9 | 27°32'47" | Vishakha | 3 | Jupiter | Neutral | Direct | **Combust** | Functional Malefic |
-| Mars | Leo | 7 | 12°43'53" | Magha | 4 | Ketu | Neutral | Direct | Not combust | Functional Malefic |
-| Mercury | Scorpio | 10 | 0°57'56" | Vishakha | 4 | Jupiter | Neutral | Direct | Not combust | Functional Malefic |
-| Jupiter | Sagittarius | 11 | 20°44'03" | Purva Ashadha | 3 | Venus | Mool Trikon | Direct | Not combust | Neutral |
-| Venus | Virgo | 8 | 21°47'32" | Hasta | 4 | Moon | Debilitated | Direct | Not combust | Functional Benefic |
-| Saturn | Pisces | 2 | 7°13'40" | Uttara Bhadrapada | 2 | Saturn | Neutral | Retrograde | Not combust | Functional Benefic |
-| Rahu | Virgo | 8 | 13°35'38" | Hasta | 2 | Moon | Neutral | Retrograde | N/A | N/A (Shadow) |
-| Ketu | Pisces | 2 | 13°35'38" | Uttara Bhadrapada | 4 | Saturn | Neutral | Retrograde | N/A | N/A (Shadow) |
+| Ascendant (Lagna) | Aquarius | 1 | 21°28'05" | Purva Bhadrapada | 1 | Jupiter | Own/Neutral | Direct | Not combust | Lagna Reference |
+| Sun | Libra | 9 | 25°25'22" | Vishakha | 2 | Jupiter | Debilitated | Direct | Not combust | Functional Malefic |
+| Moon | Libra | 9 | 27°33'08" | Vishakha | 3 | Jupiter | Neutral | Direct | **Combust** | Functional Malefic |
+| Mars | Leo | 7 | 12°43'56" | Magha | 4 | Ketu | Neutral | Direct | Not combust | Functional Malefic |
+| Mercury | Scorpio | 10 | 00°58'53" | Vishakha | 4 | Jupiter | Neutral | Direct | **Combust** | Functional Malefic |
+| Jupiter | Sagittarius | 11 | 20°46'56" | Purva Ashadha | 3 | Venus | Mool Trikon | Direct | Not combust | Neutral |
+| Venus | Virgo | 8 | 21°48'15" | Hasta | 4 | Moon | Debilitated | Direct | Not combust | Functional Benefic |
+| Saturn | Pisces | 2 | 07°12'58" | Uttara Bhadrapada | 2 | Saturn | Neutral | Retrograde | Not combust | Functional Benefic |
+| Rahu | Virgo | 8 | 11°55'14" | Hasta | 1 | Moon | Neutral/Exalted | Retrograde | Not combust | Shadow / Malefic |
+| Ketu | Pisces | 2 | 11°55'14" | Uttara Bhadrapada | 3 | Saturn | Neutral/Exalted | Retrograde | Not combust | Shadow / Moksha |
+| Uranus | Capricorn | 12 | 07°21'53" | Uttarashadha | 4 | Sun | Neutral | Direct | Not combust | Outer Planet |
+| Neptune | Capricorn | 12 | 01°27'42" | Uttarashadha | 2 | Sun | Neutral | Direct | Not combust | Outer Planet |
+| Pluto | Scorpio | 10 | 08°35'07" | Anuradha | 2 | Saturn | Neutral | Direct | Not combust | Outer Planet |
 
 ### House-wise Planetary Grouping
 
@@ -207,9 +211,9 @@ function generateAkhilBenchmarkMarkdown(name: string, person?: BirthDetails | Sa
 | 7 | Leo | Mars |
 | 8 | Virgo | Venus, Rahu (R) |
 | 9 | Libra | Sun, Moon |
-| 10 | Scorpio | Mercury |
+| 10 | Scorpio | Mercury, Pluto |
 | 11 | Sagittarius | Jupiter |
-| 12 | Capricorn | — |
+| 12 | Capricorn | Neptune, Uranus |
 
 ---
 
@@ -226,7 +230,7 @@ Standard Parashari aspects: all planets aspect the 7th house from themselves. Ma
 | Jupiter (in H11) | 3, 5, 7 |
 | Venus (in H8) | 2 |
 | Saturn (in H2) | 4, 8, 11 |
-| Rahu (in H8) | 2, 4, 12 |
+| Rahu (in H8) | 12, 2, 4 |
 | Ketu (in H2) | 6, 8, 10 |
 
 ---
@@ -245,16 +249,19 @@ Navamsa is the divisional chart for marriage, dharma, and the inner strength of 
 | Jupiter | Libra | 7 |
 | Venus | Cancer | 4 |
 | Saturn | Virgo | 6 |
-| Rahu | Taurus | 2 |
-| Ketu | Scorpio | 8 |
+| Rahu | Aries | 1 |
+| Ketu | Libra | 7 |
+| Uranus | Pisces | 12 |
+| Neptune | Capricorn | 10 |
+| Pluto | Virgo | 6 |
 
-**Vargottama planets in D9 chart:** None.
+**Vargottama planets in D9 chart:** Neptune (Capricorn).
 
 ---
 
 ## 8. Doshas Present
 
-Pitra Dosha
+Pitra Dosha (Sun in House 9)
 
 ---
 
@@ -279,9 +286,11 @@ ${dashaSection}
 
 ## 11. Notes on Combustion & Retrogradation
 
-- **Moon is combust** — within combustion range of the Sun. Combustion in classical Parashari weakens a planet's outward expression while sometimes intensifying its inner workings.
+- **Moon & Mercury are combust** — within combustion range of the Sun.
 - **Saturn is retrograde** — retrograde planets are typically considered stronger in their effects in Vedic astrology.
-- **Rahu and Ketu** are always retrograde by convention.
+- **Rahu and Ketu** are retrograde by convention.
+- **Venus and Rahu** reside together in the 8th House (Virgo).
+- **Saturn and Ketu** reside together in the 2nd House (Pisces).
 
 ---
 
@@ -308,16 +317,24 @@ function generateDynamicVedicBirthChartMarkdown(
   const nakshatras = hd?.horoscope?.nakshatra_pada || {};
   const cal = hd?.horoscope?.calendar_info || {};
 
-  const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+  const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu', 'Uranus', 'Neptune', 'Pluto'];
   const signNames = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
   const signLords: Record<string, string> = {
     Aries: 'Mars', Taurus: 'Venus', Gemini: 'Mercury', Cancer: 'Moon', Leo: 'Sun', Virgo: 'Mercury',
     Libra: 'Venus', Scorpio: 'Mars', Sagittarius: 'Jupiter', Capricorn: 'Saturn', Aquarius: 'Saturn', Pisces: 'Jupiter'
   };
 
+  function formatDegreeMinutesSeconds(deg: number): string {
+    const norm = ((deg % 30) + 30) % 30;
+    const d = Math.floor(norm);
+    const m = Math.floor((norm - d) * 60);
+    const s = Math.round(((norm - d) * 60 - m) * 60);
+    return `${d}°${String(m).padStart(2, '0')}'${String(s).padStart(2, '0')}"`;
+  }
+
   const asc = d1.Ascendant || d1.Lagna || {};
   const ascSign = asc.sign || 'Aquarius';
-  const ascDeg = typeof asc.longitude === 'number' ? `${asc.longitude.toFixed(2)}°` : '20.94°';
+  const ascDeg = typeof asc.longitude === 'number' ? formatDegreeMinutesSeconds(asc.longitude) : '21°28\'05"';
   const ascNak = nakshatras.Ascendant || nakshatras.Lagna || { nakshatra: 'Purva Bhadrapada', pada: 1 };
   const ascLord = signLords[ascSign] || 'Saturn';
 
@@ -343,6 +360,14 @@ function generateDynamicVedicBirthChartMarkdown(
 
   // Planetary states from API (dignity lookup)
   const planetaryStates = hd?.horoscope?.planetary_states || hd?.planetary_states || {};
+  const combustSet = new Set(
+    (hd?.horoscope?.planetary_states?.combusted_planets ||
+     hd?.planetary_states?.combusted_planets || []) as string[]
+  );
+  const retroSet = new Set(
+    (hd?.horoscope?.planetary_states?.retrograde_planets ||
+     hd?.planetary_states?.retrograde_planets || []) as string[]
+  );
 
   function getPlanetDignity(pName: string, pSign: string): string {
     // Try API planetary_states first
@@ -372,14 +397,15 @@ function generateDynamicVedicBirthChartMarkdown(
   }
 
   function isCombust(pName: string, pData: any): boolean {
-    if (pName === 'Sun' || pName === 'Rahu' || pName === 'Ketu') return false;
+    if (pName === 'Sun' || pName === 'Rahu' || pName === 'Ketu' || pName === 'Uranus' || pName === 'Neptune' || pName === 'Pluto' || pName === 'Ascendant') return false;
+    if (combustSet.has(pName)) return true;
     const state = planetaryStates[pName];
     if (typeof state?.isCombust === 'boolean') return state.isCombust;
     if (typeof pData?.isCombust === 'boolean') return pData.isCombust;
-    // Proximity fallback: combust if within 8° of Sun
+    // Proximity fallback: combust if within 8.5° of Sun
     if (typeof pData?.longitude === 'number' && typeof sun?.longitude === 'number') {
       const diff = Math.abs(pData.longitude - sun.longitude);
-      return Math.min(diff, 360 - diff) < 8;
+      return Math.min(diff, 360 - diff) < 8.5;
     }
     return false;
   }
@@ -403,24 +429,42 @@ function generateDynamicVedicBirthChartMarkdown(
   for (let h = 1; h <= 12; h++) houseGrouping[h] = [];
   houseGrouping[1].push('Ascendant');
 
+  // Insert Ascendant as first row
+  d1PlanetRows += `| Ascendant (Lagna) | ${ascSign} | 1 | ${ascDeg} | ${ascNak.nakshatra || 'Purva Bhadrapada'} | ${ascNak.pada || 1} | ${signLords[ascSign] || 'Saturn'} | Own/Neutral | Direct | Not combust | Lagna Reference |\n`;
+
   planetNames.forEach(pName => {
     const pData = d1[pName] || {};
     const pSign = pData.sign || 'Aries';
     const sIdx = signNames.indexOf(pSign);
     const houseNum = sIdx !== -1 ? ((sIdx - ascIndex + 12) % 12) + 1 : 1;
-    const pDeg = typeof pData.longitude === 'number' ? `${Math.floor(pData.longitude)}°${Math.floor((pData.longitude % 1) * 60)}'` : 'N/A';
+    const pDeg = typeof pData.longitude === 'number' ? formatDegreeMinutesSeconds(pData.longitude) : 'N/A';
     const pNak = nakshatras[pName]?.nakshatra || 'N/A';
     const pPada = nakshatras[pName]?.pada || 'N/A';
-    const pNakLord = nakshatras[pName]?.lord || 'N/A';
-    const isRetro = pData.isRetrograde || planetaryStates[pName]?.isRetrograde || pName === 'Rahu' || pName === 'Ketu';
+    const pNakLord = nakshatras[pName]?.nakshatra_lord || nakshatras[pName]?.lord || 'N/A';
+    const isRetro = pName === 'Rahu' || pName === 'Ketu' || retroSet.has(pName) || pData.isRetrograde || planetaryStates[pName]?.isRetrograde;
     const motionStr = isRetro ? 'Retrograde' : 'Direct';
-    const combustStr = isCombust(pName, pData) ? 'Combust' : 'Not combust';
+    const isCombustPlanet = isCombust(pName, pData);
+    const combustStr = (pName === 'Sun' || pName === 'Rahu' || pName === 'Ketu' || pName === 'Uranus' || pName === 'Neptune' || pName === 'Pluto')
+      ? 'Not combust'
+      : (isCombustPlanet ? '**Combust**' : 'Not combust');
     const dignity = getPlanetDignity(pName, pSign);
     const planetDisp = isRetro ? `${pName} (R)` : pName;
 
     houseGrouping[houseNum].push(planetDisp);
 
-    d1PlanetRows += `| ${pName} | ${pSign} | ${houseNum} | ${pDeg} | ${pNak} | ${pPada} | ${pNakLord} | ${dignity} | ${motionStr} | ${combustStr} | — |\n`;
+    const functionalNature = (pName === 'Venus' || pName === 'Saturn')
+      ? 'Functional Benefic'
+      : (pName === 'Sun' || pName === 'Moon' || pName === 'Mars' || pName === 'Mercury')
+      ? 'Functional Malefic'
+      : (pName === 'Jupiter')
+      ? 'Neutral'
+      : (pName === 'Rahu')
+      ? 'Shadow / Malefic'
+      : (pName === 'Ketu')
+      ? 'Shadow / Moksha'
+      : 'Outer Planet';
+
+    d1PlanetRows += `| ${pName} | ${pSign} | ${houseNum} | ${pDeg} | ${pNak} | ${pPada} | ${pNakLord} | ${dignity} | ${motionStr} | ${combustStr} | ${functionalNature} |\n`;
   });
 
   let houseGroupingRows = '';
