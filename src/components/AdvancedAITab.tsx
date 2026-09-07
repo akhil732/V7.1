@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { BirthDetails } from '../types';
 import { useAdvancedAIChat } from '../hooks/useAdvancedAIChat';
 import { useTextStreamBuffer } from '../hooks/useTextStreamBuffer';
+import { EnhancedGeminiConsultationService, ConsultationPersona } from '../lib/services/EnhancedGeminiConsultationService';
 import { calculateActiveDasha } from '../lib/engines/DashaEngine';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { GroundTruthInspectorDrawer } from './AdvancedAI/GroundTruthInspectorDrawer';
 import ReactMarkdown from 'react-markdown';
-import { Copy, Check, MessageSquare, AlertCircle } from 'lucide-react';
+import { Copy, Check, Search, MessageSquare, AlertCircle } from 'lucide-react';
 
 interface AdvancedAITabProps {
   birthDetails?: BirthDetails;
@@ -124,7 +126,7 @@ export const PRELOADED_QUESTIONS: PreloadedQuestion[] = [
   {
     id: 'q10',
     num: 10,
-    icon: '👨👩👧',
+    icon: '👨‍👩‍👧',
     label: 'Will Your Partner Get Along With Your Parents?',
     subtitle: 'మీ భాగస్వామి మీ తల్లిదండ్రులతో కలిసి ఉంటారా?',
     category: 'Marriage',
@@ -333,6 +335,7 @@ function EmptyState({
   birthDetails?: BirthDetails;
 }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const summaryText = getChartSummaryText(horoscopeData, birthDetails);
 
   const categories = [
     { id: 'All', label: 'అన్ని ప్రశ్నలు (All 15)' },
@@ -449,23 +452,31 @@ function UserBubble({ text, C }: { text: string; C: ReturnType<typeof getColors>
 function AssistantResponseCard({
   msg,
   C,
-  language = 'te',
+  onOpenInspector,
   onSendFollowUp
 }: {
   msg: any;
   C: ReturnType<typeof getColors>;
-  language?: 'en' | 'hi' | 'te';
+  onOpenInspector?: () => void;
   onSendFollowUp?: (text: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const metadata = msg.metadata || {};
-  const domain = metadata.queryDomain || 'GENERAL';
+  const kpGt = metadata.kpGroundTruths;
+  const domain = metadata.queryDomain || (kpGt?.domain) || 'GENERAL';
+  const confidence = metadata.confidence || (kpGt?.confidenceScore) || 85;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(msg.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const statusLabel = kpGt?.vedicPromise === 'YES' ? 'అనుకూలం · యోగం ఉంది' : kpGt?.vedicPromise === 'DELAYED' ? 'ఆలస్యం · ఓపిక అవసరం' : 'జాగ్రత్త అవసరం';
+  const statusIcon = kpGt?.vedicPromise === 'YES' ? '✓' : kpGt?.vedicPromise === 'DELAYED' ? '◷' : '⚠';
+  const statusColor = kpGt?.vedicPromise === 'YES' ? C.emeraldText : kpGt?.vedicPromise === 'DELAYED' ? C.amberText : C.roseText;
+  const statusBg = kpGt?.vedicPromise === 'YES' ? C.emeraldBg : kpGt?.vedicPromise === 'DELAYED' ? C.amberBg : C.roseBg;
+  const statusBorder = kpGt?.vedicPromise === 'YES' ? C.emeraldBorder : kpGt?.vedicPromise === 'DELAYED' ? C.amberBorder : C.roseBorder;
 
   return (
     <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden', boxShadow: `0 4px 12px ${C.shadow}` }}>
@@ -484,9 +495,26 @@ function AssistantResponseCard({
             </>
           )}
         </div>
+        {confidence && (
+          <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '2px 8px', borderRadius: 4, color: C.emeraldText, background: C.emeraldBg, border: `1px solid ${C.emeraldBorder}` }}>
+            {confidence}% ఖచ్చితత్వం
+          </span>
+        )}
       </div>
 
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Optional Ground Truth Status Banner if available */}
+        {kpGt && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 12, background: statusBg, border: `1px solid ${statusBorder}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: statusColor }}>{statusLabel}</span>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
+              భావ అధిపతి: <strong style={{ color: C.accent }}>{kpGt.targetHouseLord || 'Venus'}</strong>
+            </span>
+          </div>
+        )}
 
         {/* Formatted Markdown Content */}
         <div className="prose max-w-none" style={{ fontSize: 13, color: C.body, lineHeight: 1.75 }}>
@@ -528,6 +556,16 @@ function AssistantResponseCard({
         {/* Action Toolbar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: `1px solid ${C.border}`, marginTop: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {onOpenInspector && (
+              <button
+                onClick={onOpenInspector}
+                style={{ fontSize: 11, fontWeight: 600, color: C.emeraldText, background: C.emeraldBg, border: `1px solid ${C.emeraldBorder}`, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.1s' }}
+              >
+                <Search className="w-3 h-3" />
+                <span>గణాంకాలు చూడండి (Inspect Facts)</span>
+              </button>
+            )}
+
             {onSendFollowUp && (
               <button
                 onClick={() => onSendFollowUp(`దయచేసి దీని గురించి మరికొన్ని వివరాలు తెలపండి.`)}
@@ -556,12 +594,12 @@ function AssistantResponseCard({
 function AssistantBubble({
   msg,
   C,
-  language = 'te',
+  onOpenInspector,
   onSendFollowUp
 }: {
   msg: any;
   C: ReturnType<typeof getColors>;
-  language?: 'en' | 'hi' | 'te';
+  onOpenInspector?: () => void;
   onSendFollowUp?: (text: string) => void;
 }) {
   if (msg.error) {
@@ -579,12 +617,7 @@ function AssistantBubble({
     <div style={{ display: 'flex', gap: 10, width: '100%' }}>
       <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.emptyIconBg, border: `1px solid ${C.emptyIconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 4, fontSize: 13, color: C.accent }}>✦</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <AssistantResponseCard
-          msg={msg}
-          C={C}
-          language={language}
-          onSendFollowUp={onSendFollowUp}
-        />
+        <AssistantResponseCard msg={msg} C={C} onOpenInspector={onOpenInspector} onSendFollowUp={onSendFollowUp} />
       </div>
     </div>
   );
@@ -833,6 +866,7 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
 
   const [input, setInput] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -852,6 +886,12 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
     }
     return 'Saturn MD → Rahu AD';
   }, [horoscopeData, effectiveBirthDetails]);
+
+  const service = useRef(new EnhancedGeminiConsultationService()).current;
+
+  // Active query and computed ground truths for inspector
+  const activeQuery = messages.length > 0 ? messages[messages.length - 1].content : 'When will I get married?';
+  const kpGroundTruths = service.computeKPGroundTruths(activeQuery, effectiveBirthDetails, horoscopeData);
 
   const handleSend = useCallback(
     (overrideText?: string) => {
@@ -957,7 +997,7 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
                   key={idx}
                   msg={msg}
                   C={C}
-                  language={language || 'te'}
+                  onOpenInspector={() => setInspectorOpen(true)}
                   onSendFollowUp={handleSend}
                 />
               )
@@ -972,7 +1012,6 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
                   metadata: { persona: 'quick', queryDomain: 'STREAMING' }
                 }}
                 C={C}
-                language={language || 'te'}
               />
             )}
 
@@ -1015,6 +1054,14 @@ export const AdvancedAITab: React.FC<AdvancedAITabProps> = ({
           C={C}
         />
       </div>
+
+      {/* Ground Truth Inspector Drawer */}
+      <GroundTruthInspectorDrawer
+        isOpen={inspectorOpen}
+        onClose={() => setInspectorOpen(false)}
+        groundTruths={kpGroundTruths}
+        language="te"
+      />
     </div>
   );
 };

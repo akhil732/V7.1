@@ -279,12 +279,12 @@ Structure your response exactly as follows:
 - **గ్రహాల స్థితి, ఉచ్ఛ, నీచ మరియు దృష్టి విశ్లేషణ (Placements, dignity, aspects)**: [Detailed analysis in Telugu]
 
 ## 2. దశా-అంతర్దశా విశ్లేషణ (Dasha-Antardasha Analysis)
-- **ప్రస్తుత దశా-అంతర్దశా వివరణ (Current Dasha-Antardasha Overview)**: [Detailed analysis in Telugu of active MD/AD/PD lords and house activation. NOTE: Do NOT check or compare between natal promise planets and Dasha-Antardasha planets in this section.]
+- **ప్రస్తుత దశా-అంతర్దశా వివరణ (Current Dasha-Antardasha Overview)**: [Detailed analysis in Telugu]
 - **లగ్నం నుండి గ్రహాల స్థితి మరియు ఫలితాలు (Planetary houses ruled/occupied and predictions from Lagna)**: [Detailed analysis in Telugu]
 
 ## 3. గోచార విశ్లేషణ (Gochara Analysis)
 - **చంద్ర రాశి నుండి 9 గ్రహాల గోచారం (Transits of All 9 Planets from Chandra Rasi - Libra)**: [Detailed comprehensive analysis in Telugu for each of the 9 planets: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, and Ketu]
-- **కీలక గ్రహాల సంచారం మరియు వాటి ఫలితాలు (Key Planetary Transits and Results)**: [Detailed focused analysis in Telugu. NOTE: The MAIN planets to analyze in Transit / Gochara are those planets involved in BOTH Natal Promise and Dasha-Antardasha.]
+- **కీలక గ్రహాల సంచారం మరియు వాటి ఫలితాలు (Key Planetary Transits and Results)**: [Detailed focused analysis of Saturn in 6th, Jupiter in 10th, Rahu in 5th, and Ketu in 11th in Telugu]
 
 ## 4. ముగింపు మరియు పరిహారాలు (Conclusion & Remedies)
 - **భవిష్యత్ సూచనలు మరియు సలహాలు (Future Guidance & Advice)**: [Detailed analysis in Telugu]
@@ -470,7 +470,7 @@ function formatQuickDynamicProfile(gt: UnifiedKPGroundTruthWithDataFlags, native
   const hd = gt.horoscopeData;
 
   if (!bd || !hd) {
-    // Graceful fallback to default profile
+    // Graceful fallback to default hardcoded Akhil profile
     return `Birth Profile & Key Coordinates:
 Name: ${nativeName}
 Date of Birth: November 11, 1996 (11-Nov-1996)
@@ -478,22 +478,22 @@ Time of Birth: 13:50:00 (1:50 PM)
 Place of Birth: Jaggampeta, Andhra Pradesh, India
 Geographic Coordinates: 17.17° N Latitude, 82.06° E Longitude
 Timezone: GMT +5.5 (Indian Standard Time)
-Sidereal Ascendant (Lagna): Aquarius (21°28'05") — Purvabhadra Nakshatra (Pada 1, Jupiter)
+Sidereal Ascendant (Lagna): Aquarius (20.94°) — Shatabhisha Nakshatra (Rahu)
 Janma Rasi (Chandra Rasi): Libra (Thula) — Vishakha Nakshatra (Jupiter)
 Janma Nakshatra: Vishakha (Quarter 3)
 
 📊 Divisional charts: D-1, D-9, and D-10 Placements:
 1. D-1 Rasi:
-Ascendant (Lagna): Aquarius (21°28'05") — Purva Bhadrapada Pada 1, Ruled by Saturn
-Sun: Libra (25°25'22") — Debilitated, Vishakha Nakshatra Pada 2
-Moon: Libra (27°33'08") — Vishakha Nakshatra Pada 3
-Mars: Leo (12°43'56") — Magha Nakshatra Pada 4
-Mercury: Scorpio (00°58'53") — Vishakha Nakshatra Pada 4
-Jupiter: Sagittarius (20°46'56") — Own Sign (Moolatrikona), Purva Ashadha Nakshatra Pada 3
-Venus: Virgo (21°48'15") — Debilitated, Hasta Nakshatra Pada 4
-Saturn [R]: Pisces (07°12'58") — Uttara Bhadrapada Nakshatra Pada 2
-Rahu [R]: Virgo (11°55'14") — Hasta Nakshatra Pada 1
-Ketu [R]: Pisces (11°55'14") — Uttara Bhadrapada Nakshatra Pada 3
+Ascendant (Lagna): Aquarius (20.94°) — Ruled by Saturn
+Sun: Libra (25.42°) — Debilitated, Vishakha Nakshatra
+Moon: Libra (27.55°) — Vishakha Nakshatra
+Mars: Leo (12.74°) — Magha Nakshatra
+Mercury: Scorpio (0.98°) — Vishakha Nakshatra
+Jupiter: Sagittarius (20.74°) — Own Sign (Moolatrikona), Purva Ashadha Nakshatra
+Venus: Virgo (21.80°) — Debilitated, Hasta Nakshatra
+Saturn: Pisces (7.23°) — Uttara Bhadrapada Nakshatra
+Rahu: Virgo (11.92°) — Exalted, Hasta Nakshatra
+Ketu: Pisces (11.92°) — Exalted, Uttara Bhadrapada Nakshatra
 
 2. D-9 Navamsa:
 Ascendant: Aries (8.43°) — Ruled by Mars
@@ -854,12 +854,10 @@ Active Profile is **{nativeName}**.
 ${formatQuickDynamicProfile(groundTruth, nativeName)}
 
 ANALYSIS RULES:
-1. Natal Promise analysis from Lagna.
-2. Dasha-Antardasha analysis: Do NOT check or compare between natal promise planets and Dasha-Antardasha planets in this section.
-3. Gochara (Transit) analysis: The MAIN planets to analyze in Transit / Gochara are those planets involved in BOTH Natal Promise and Dasha-Antardasha.
+1. Natal/Dasha analysis from Lagna.
 ${renderGocharaPromptBlock(computeLiveTransitSnapshot(getNatalMoonSign(groundTruth.horoscopeData), new Date()))}
-4. Translate all analysis into Telugu script, including standard terms.
-5. STRICT QUALITY CONSTRAINTS:
+3. Translate all analysis into Telugu script, including standard terms.
+4. STRICT QUALITY CONSTRAINTS:
    - NEVER invent or alter planetary positions, degrees, or house placements.
    - NEVER make unmotivated causal jumps (e.g., claiming Mercury placement automatically means "IT, foreign, or communication job" without explicit house lordship evidence).
    - NEVER use absolute or overly optimistic language like "Golden Period" (సువర్ణ సమయం) or guarantees. Use probabilistic language ("అనుకూల సంకేతాలు ఉన్నవి", "సమయ పరిధి").
@@ -872,12 +870,12 @@ Structure your response exactly as follows:
 - **గ్రహాల స్థితి, ఉచ్ఛ, నీచ మరియు దృష్టి విశ్లేషణ (Placements, dignity, aspects)**: [Detailed analysis in Telugu]
 
 ## 2. దశా-అంతర్దశా విశ్లేషణ (Dasha-Antardasha Analysis)
-- **ప్రస్తుత దశా-అంతర్దశా వివరణ (Current Dasha-Antardasha Overview)**: [Detailed analysis in Telugu for active MD/AD/PD lords and house activation. NOTE: Do NOT check or compare between natal promise planets and Dasha-Antardasha planets in this section.]
+- **ప్రస్తుత దశా-అంతర్దశా వివరణ (Current Dasha-Antardasha Overview)**: [Detailed analysis in Telugu]
 - **లగ్నం నుండి గ్రహాల స్థితి మరియు ఫలితాలు (Planetary houses ruled/occupied and predictions from Lagna)**: [Detailed analysis in Telugu]
 
 ## 3. గోచార విశ్లేషణ (Gochara Analysis)
 - **చంద్ర రాశి నుండి 9 గ్రహాల గోచారం (Transits of All 9 Planets from Chandra Rasi)**: [Detailed comprehensive analysis in Telugu for each of the 9 planets: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, and Ketu]
-- **కీలక గ్రహాల సంచారం మరియు వాటి ఫలితాలు (Key Planetary Transits and Results)**: [Detailed focused analysis of key planets in Telugu. NOTE: The MAIN planets to analyze in Transit / Gochara are those planets involved in BOTH Natal Promise and Dasha-Antardasha.]
+- **కీలక గ్రహాల సంచారం మరియు వాటి ఫలితాలు (Key Planetary Transits and Results)**: [Detailed focused analysis of Saturn, Jupiter, Rahu, and Ketu in Telugu]
 
 ## 4. ముగింపు మరియు పరిహారాలు (Conclusion & Remedies)
 - **భవిష్యత్ సూచనలు మరియు సలహాలు (Future Guidance & Advice)**: [Detailed analysis in Telugu]

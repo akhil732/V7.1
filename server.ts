@@ -11,11 +11,6 @@ import { CircuitBreaker } from './src/lib/resilience/CircuitBreaker';
 import { ModelRoutingService } from './src/lib/services/ModelRoutingService';
 import { generateSystemPrompt } from './src/lib/i18n/systemPromptGenerator';
 import { generateVagdhenuChant } from './src/lib/vagdhenuService';
-import {
-  validateInterplanetaryClaims,
-  formatValidationReport,
-  buildGuardrailedIPBlock,
-} from './src/lib/guardrails';
 
 dotenv.config();
 
@@ -388,7 +383,7 @@ app.all('/api/jhora-proxy/*', async (req, res) => {
 
 app.post('/api/advanced-ai', async (req, res) => {
   try {
-    const { prompt, systemInstructionOverride, language = 'en', userQuery, chartSummary, ipRelations } = req.body;
+    const { prompt, systemInstructionOverride, language = 'en', userQuery, chartSummary } = req.body;
 
     if (!userQuery && !prompt) {
       return res.status(400).json({ error: 'User query or prompt is required.' });
@@ -416,13 +411,7 @@ app.post('/api/advanced-ai', async (req, res) => {
     const langName = language === 'hi' ? 'Hindi' : language === 'te' ? 'Telugu' : 'English';
 
     const baseAiSys = generateSystemPrompt(language as any);
-    const guardrailBlock = ipRelations ? buildGuardrailedIPBlock(ipRelations) : '';
     const systemInstruction = systemInstructionOverride || `${baseAiSys}
-${guardrailBlock}
-
-RULES FOR SECTION ANALYSIS:
-• In section 2. దశ-అంతర్దశ (Dasha-Antardasha): Do NOT check or compare between natal promise planets and Dasha-Antardasha planets.
-• In section గోచార (Transit) ప్రభావం: The MAIN planets to analyze in Gochara / Transit are those planets involved in BOTH Natal Promise and Dasha-Antardasha.
 
 CRITICAL FORMATTING & STRUCTURE REQUIREMENTS:
 1. Always start with a clear, direct executive summary statement answering the core question in bold.
@@ -503,28 +492,12 @@ Provide a detailed, search-grounded astrological analysis addressing the user qu
       });
     }
 
-    // Guardrail runtime validation
-    let guardrailWarning: any = null;
-    if (answer && ipRelations) {
-      const validation = validateInterplanetaryClaims(answer, ipRelations);
-      if (!validation.valid) {
-        console.warn(`[Guardrail] Caught ${validation.breaches.length} interplanetary breach(es) in /api/advanced-ai:`);
-        validation.breaches.forEach(b => console.warn(`  - ${b.type} (${b.severity}): ${b.reason}`));
-        guardrailWarning = {
-          breached: true,
-          breaches: validation.breaches,
-          report: formatValidationReport(validation)
-        };
-      }
-    }
-
     if (answer) {
       return res.json({
         answer,
         sources,
         searchQueries: webSearchQueries,
-        fallback: false,
-        ...(guardrailWarning ? { _guardrailWarning: guardrailWarning } : {})
+        fallback: false
       });
     } else {
       return res.json({
@@ -550,7 +523,7 @@ Provide a detailed, search-grounded astrological analysis addressing the user qu
 // Streaming SSE API endpoint for Search-Grounded / Multi-turn Advanced AI consultation
 app.post('/api/advanced-ai/stream', async (req, res) => {
   try {
-    const { prompt, systemInstructionOverride, language = 'en', userQuery, conversationHistory = [], persona = 'kp_stellar', ipRelations } = req.body;
+    const { prompt, systemInstructionOverride, language = 'en', userQuery, conversationHistory = [], persona = 'kp_stellar' } = req.body;
 
     if (!userQuery && !prompt) {
       return res.status(400).json({ error: 'User query or prompt is required.' });
@@ -577,12 +550,7 @@ app.post('/api/advanced-ai/stream', async (req, res) => {
 
     const langName = language === 'hi' ? 'Hindi' : language === 'te' ? 'Telugu' : 'English';
 
-    const guardrailBlock = ipRelations ? buildGuardrailedIPBlock(ipRelations) : '';
-    const defaultSysInstruction = systemInstructionOverride || `You are an elite master Vedic astrologer providing multi-turn streaming consultation in ${langName}. Always adhere strictly to Vedic Parashari principles, D1 Rasi, D9 Navamsha, divisional charts, Vimshottari Dasha-Antardasha, and current transits (Gochara) w.r.t Moon. Do not use KP terminology or modern psychological framing.
-RULES FOR SECTION ANALYSIS:
-• In section 2. దశ-అంతర్దశ (Dasha-Antardasha): Do NOT check or compare between natal promise planets and Dasha-Antardasha planets.
-• In section గోచార (Transit) ప్రభావం: The MAIN planets to analyze in Gochara / Transit are those planets involved in BOTH Natal Promise and Dasha-Antardasha.
-${guardrailBlock}`;
+    const defaultSysInstruction = systemInstructionOverride || `You are an elite master Vedic astrologer providing multi-turn streaming consultation in ${langName}. Always adhere strictly to Vedic Parashari principles, D1 Rasi, D9 Navamsha, divisional charts, Vimshottari Dasha-Antardasha, and current transits (Gochara) w.r.t Moon. Do not use KP terminology or modern psychological framing.`;
 
     const streamCandidateModels = PRIMARY_MODELS;
     const availableStreamModels = streamCandidateModels.filter(m => !isModelQuotaExhausted(m));
@@ -623,24 +591,11 @@ ${guardrailBlock}`;
           });
         }
 
-        let fullStreamedText = '';
         for await (const chunk of stream) {
           if (chunk.text) {
-            fullStreamedText += chunk.text;
             res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
           }
         }
-
-        // Validate complete streamed text against computed ground truth
-        if (ipRelations && fullStreamedText) {
-          const validation = validateInterplanetaryClaims(fullStreamedText, ipRelations);
-          if (!validation.valid) {
-            console.warn(`[Guardrail Stream] Caught ${validation.breaches.length} interplanetary breach(es):`);
-            validation.breaches.forEach(b => console.warn(`  - ${b.type} (${b.severity}): ${b.reason}`));
-            res.write(`data: ${JSON.stringify({ _guardrailWarning: formatValidationReport(validation) })}\n\n`);
-          }
-        }
-
         res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
         res.end();
         streamSuccess = true;
