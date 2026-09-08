@@ -11,6 +11,7 @@ import { CircuitBreaker } from './src/lib/resilience/CircuitBreaker';
 import { ModelRoutingService } from './src/lib/services/ModelRoutingService';
 import { generateSystemPrompt } from './src/lib/i18n/systemPromptGenerator';
 import { generateVagdhenuChant } from './src/lib/vagdhenuService';
+import { POST as vedicConsultationHandler } from './google-ai-studio-handler';
 
 dotenv.config();
 
@@ -1206,6 +1207,9 @@ app.post('/api/vagdhenu/detect-meter', async (req, res) => {
 app.post('/api/gochara', (req, res) => {
   res.json({ data: { planets: [] } });
 });
+
+// Jyothishya Sanathanam v7.1 Vedic Consultation Stream API
+app.post('/api/vedic/consultation', vedicConsultationHandler);
 
 async function startServer() {
   try {
