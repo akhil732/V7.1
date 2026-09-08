@@ -102,7 +102,7 @@ Every response strictly delivers:
 
 ---
 
-## ⚠️ Dwidwadasha / Shadashtaka Complete 9-Pair Audit Matrix
+## ⚠️ Dwidwadasha / Shadashtaka 9-Pair Audit Matrix (with Directional Asymmetry)
 
 The consultation engine audits **all 3 pairs** (MD-AD, AD-PD, MD-PD) across **all 3 dimensions** (D-1 Natal, D-9 Navamsha, and Current Transit from Moon):
 
@@ -110,10 +110,18 @@ The consultation engine audits **all 3 pairs** (MD-AD, AD-PD, MD-PD) across **al
   1. **D-1:** MD-AD, AD-PD, MD-PD
   2. **D-9:** MD-AD, AD-PD, MD-PD
   3. **Transit:** MD-AD, AD-PD, MD-PD
-- **Conflict Signatures:**
-  - **2/12 (Dwidwadasha - ద్విర్ద్వాదశ):** Separation 1 or 11 → Financial drain, friction, misunderstandings, frictional delays.
-  - **6/8 (Shadashtaka - షడాష్టక):** Separation 5 or 7 → Acute conflict, health crisis, dispute, sudden disruption.
-- **Critical Transit Rule:** Transit conflicts take precedence in immediate timing. If operating dasha lords are in transit conflict, the current sub-period will face acute friction/delays regardless of natal promise.
+- **Directional Counting Rule:**
+  - Forward counts calculated Lord 1 → Lord 2 and Lord 2 → Lord 1.
+  - Forward counts **2 and 12** → **Dwi-Dwadash (ద్విర్ద్వాదశ)**
+  - Forward counts **6 and 8** → **Shadashtak (షడాష్టక)**
+- **Directional Asymmetry Meaning:**
+  - **Dwi-Dwadash (2/12):**
+    - *Lord in 2nd position:* Demands capital, resource outflow, financial strain, family/maraka obligations.
+    - *Lord in 12th position:* Experiences dissolution, loss, depletion of foundation, solitude, or fatigue.
+  - **Shadashtak (6/8):**
+    - *Lord in 6th position:* Drives active opposition, litigation, competition, disease, hard struggle.
+    - *Lord in 8th position:* Experiences sudden shock, existential vulnerability, panic, unexpected transformation.
+- **Critical Transit Override:** Transit conflicts take precedence in immediate timing. If operating dasha lords are in transit conflict, the current sub-period will face acute friction/delays regardless of natal promise.
 
 ---
 

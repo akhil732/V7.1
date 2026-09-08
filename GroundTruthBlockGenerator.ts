@@ -8,6 +8,22 @@
 import { QueryProfile } from './QueryProfile';
 import { generateVedicBirthChartMarkdown } from './src/lib/vedicMarkdownGenerator';
 import { computeLiveTransitSnapshot, PlanetKey } from './src/lib/engines/LiveTransitEngine';
+import {
+  generateMahadashaAntardashaReport,
+  formatMahadashaAntardashaReportAsText,
+  MahadashaAntardashaInput,
+  PlanetName,
+  checkSignRelation,
+  evaluateInterLordPair,
+} from './src/lib/engines/MahadashaAntardashaRelationshipEngine';
+export type {
+  InterLordAsymmetry,
+  InterLordPairResult,
+} from './src/lib/engines/MahadashaAntardashaRelationshipEngine';
+export {
+  checkSignRelation,
+  evaluateInterLordPair,
+};
 
 export interface PlanetPosition {
   sign: string;
@@ -316,128 +332,6 @@ function generateDashaD9Analysis(data: HoroscopeData): string {
 }
 
 /**
- * Checks whether two zodiac signs are in a Dwidwadasha (2-12) or Shadashtaka (6-8) relationship.
- * Uses 0-indexed separation where:
- * - separation 1 or 11 = Dwidwadasha (2-12 axis)
- * - separation 5 or 7 = Shadashtaka (6-8 axis)
- */
-export function checkSignRelation(
-  sign1: string,
-  sign2: string
-): 'Dwidwadasha' | 'Shadashtaka' | null {
-  const signs = [
-    'Aries', 'Taurus', 'Gemini', 'Cancer',
-    'Leo', 'Virgo', 'Libra', 'Scorpio',
-    'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
-  ];
-
-  const idx1 = signs.findIndex(s => s.toLowerCase() === sign1.toLowerCase());
-  const idx2 = signs.findIndex(s => s.toLowerCase() === sign2.toLowerCase());
-
-  if (idx1 === -1 || idx2 === -1) return null;
-
-  const separation = ((idx2 - idx1) + 12) % 12;
-
-  if (separation === 1 || separation === 11) {
-    return 'Dwidwadasha';
-  }
-  if (separation === 5 || separation === 7) {
-    return 'Shadashtaka';
-  }
-
-  return null;
-}
-
-export interface InterLordPairResult {
-  planet1: string;
-  sign1: string;
-  house1?: number | string;
-  planet2: string;
-  sign2: string;
-  house2?: number | string;
-  separation: number;
-  relationType: 'Dwidwadasha' | 'Shadashtaka' | 'Samasaptaka' | 'Trikona' | 'Kendra' | 'SahajaLabha' | 'Conjoined';
-  conflictType: 'Dwidwadasha' | 'Shadashtaka' | null;
-  description: string;
-  teluguDescription: string;
-}
-
-/**
- * Detailed evaluation of a pair of grahas and their mutual sign separation.
- */
-export function evaluateInterLordPair(
-  planet1: string,
-  sign1: string,
-  planet2: string,
-  sign2: string,
-  house1?: number | string,
-  house2?: number | string
-): InterLordPairResult | null {
-  const signs = [
-    'Aries', 'Taurus', 'Gemini', 'Cancer',
-    'Leo', 'Virgo', 'Libra', 'Scorpio',
-    'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
-  ];
-
-  const idx1 = signs.findIndex(s => s.toLowerCase() === sign1.toLowerCase());
-  const idx2 = signs.findIndex(s => s.toLowerCase() === sign2.toLowerCase());
-
-  if (idx1 === -1 || idx2 === -1) return null;
-
-  const separation = ((idx2 - idx1) + 12) % 12;
-  let conflictType: 'Dwidwadasha' | 'Shadashtaka' | null = null;
-  let relationType: InterLordPairResult['relationType'] = 'Conjoined';
-  let description = '';
-  let teluguDescription = '';
-
-  if (separation === 1 || separation === 11) {
-    conflictType = 'Dwidwadasha';
-    relationType = 'Dwidwadasha';
-    description = 'DWIDWADASHA (2-12) ⚠️ (Expense / Friction / Obstruction)';
-    teluguDescription = 'ద్విర్ద్వాదశ (2/12 - వ్యయాలు, ఘర్షణ, ఆలస్యం)';
-  } else if (separation === 5 || separation === 7) {
-    conflictType = 'Shadashtaka';
-    relationType = 'Shadashtaka';
-    description = 'SHADASHTAKA (6-8) ⚠️⚠️ (Acute Conflict / Health Strain / Delay)';
-    teluguDescription = 'షడాష్టక (6/8 - తీవ్ర విరోధం, ఆరోగ్య సమస్యలు, అడ్డంకులు)';
-  } else if (separation === 6) {
-    relationType = 'Samasaptaka';
-    description = 'Samasaptaka (1/7 - Mutual awareness / balance)';
-    teluguDescription = 'సమసప్తక (1/7 - ముఖాముఖి దృష్టి, సమతుల్యత)';
-  } else if (separation === 4 || separation === 8) {
-    relationType = 'Trikona';
-    description = 'Trikona (5/9 - Highly auspicious & smooth flow)';
-    teluguDescription = 'త్రికోణ (5/9 - శుభప్రదం, సులభ కార్యసిద్ధి)';
-  } else if (separation === 3 || separation === 9) {
-    relationType = 'Kendra';
-    description = 'Kendra (4/10 - Dynamic effort & action)';
-    teluguDescription = 'కేంద్ర (4/10 - కార్యాచరణ ద్వారా పురోగతి)';
-  } else if (separation === 2 || separation === 10) {
-    relationType = 'SahajaLabha';
-    description = 'Sahaja-Labha (3/11 - Growth & enterprise gains)';
-    teluguDescription = 'సహజ-లాభ (3/11 - వృద్ధి, లాభాలు, ఉపచయ ఫలితం)';
-  } else {
-    relationType = 'Conjoined';
-    description = 'Conjoined (1/1 - Co-present in same sign)';
-    teluguDescription = 'యుతి (1/1 - ఒకే రాశిలో సంయోగం)';
-  }
-
-  return {
-    planet1,
-    sign1,
-    house1,
-    planet2,
-    sign2,
-    house2,
-    separation,
-    relationType,
-    conflictType,
-    description,
-    teluguDescription,
-  };
-}
-
-/**
  * Section 5: Complete 9-Pair Inter-Lord Relationships Block (Dwidwadasha / Shadashtaka)
  * Audits all 3 pairs (MD-AD, AD-PD, MD-PD) across:
  * 1. D-1 (Natal Signs)
@@ -448,280 +342,28 @@ export function generateInterLordRelationships(
   data: HoroscopeData,
   _queryProfile?: QueryProfile
 ): string {
-  const d1Planets = extractPlanetMap(data.chart || data);
-  const d9Chart = data.divisionalCharts?.['D-9'] || (data as any)['D9'] || (data as any)['D-9'];
-  const d9Planets = extractPlanetMap(d9Chart);
-
-  const mdLord = data.dasha?.mahadasha?.lord || 'Mercury';
-  const adLord = data.dasha?.antardasha?.lord || 'Venus';
-  const pdLord = data.dasha?.pratyantardasha?.lord;
-
-  if (!pdLord) {
-    console.warn('[GroundTruth] Pratyantardasha (PD) lord not available in dasha payload; checking MD-AD pairs across D-1, D-9, and Transit.');
-  }
-
-  // Determine native Moon sign for transit house evaluations
   const chartObj = data.chart || data;
-  let moonSign = chartObj.moon?.sign || d1Planets['Moon']?.sign || 'Aries';
+  const d1Planets = extractPlanetMap(chartObj);
+  const moonSign = chartObj.moon?.sign || d1Planets['Moon']?.sign || 'Aries';
 
-  // Helper to extract transit sign and house from Moon
-  const getTransitInfo = (planet: string): { sign: string; houseFromMoon: number } | null => {
-    if (!planet) return null;
-    const norm = planet.charAt(0).toUpperCase() + planet.slice(1).toLowerCase();
-    const lower = planet.toLowerCase();
+  const mdLord = (data.dasha?.mahadasha?.lord || 'Mercury') as PlanetName;
+  const adLord = (data.dasha?.antardasha?.lord || 'Venus') as PlanetName;
+  const pdLord = data.dasha?.pratyantardasha?.lord as PlanetName | undefined;
 
-    let sign: string | undefined;
-    const td = data.transitData;
-    if (td) {
-      if ((td as any).positions && (td as any).positions[norm]?.sign) {
-        sign = (td as any).positions[norm].sign;
-      } else if (td[norm]?.sign) {
-        sign = td[norm].sign;
-      } else if (td[lower]?.sign) {
-        sign = td[lower].sign;
-      }
-    }
+  const d9Chart = data.divisionalCharts?.['D-9'] || (data as any)['D9'] || (data as any)['D-9'];
 
-    if (!sign) {
-      try {
-        const snap = computeLiveTransitSnapshot(moonSign);
-        sign = snap.positions[norm as PlanetKey]?.sign;
-      } catch {
-        // Fallback
-      }
-    }
-
-    if (!sign) return null;
-    const house = countHouseDistance(moonSign, sign);
-    return { sign, houseFromMoon: house };
+  const engineInput: MahadashaAntardashaInput = {
+    mdLord,
+    adLord,
+    pdLord,
+    d1Chart: chartObj,
+    d9Chart,
+    moonSign,
+    transitData: data.transitData,
   };
 
-  const lines: string[] = [
-    '═══════════════════════════════════════════════════════════════',
-    'INTER-LORD RELATIONSHIPS (Dwidwadasha / Shadashtaka Audit)',
-    '═══════════════════════════════════════════════════════════════',
-    `Dasha Hierarchy: Mahadasha (MD) = ${mdLord} | Antardasha (AD) = ${adLord}${pdLord ? ` | Pratyantardasha (PD) = ${pdLord}` : ' | Pratyantardasha (PD) = [Not specified in dasha payload]'}`,
-    '',
-  ];
-
-  const conflicts: {
-    chart: 'D-1' | 'D-9' | 'Transit';
-    pair: string;
-    type: 'Dwidwadasha' | 'Shadashtaka';
-    details: string;
-  }[] = [];
-
-  // ─────────────────────────────────────────────────────────────
-  // 1. D-1 (Natal) Relationships
-  // ─────────────────────────────────────────────────────────────
-  lines.push('D-1 (Natal Signs):');
-  const d1MdSign = d1Planets[mdLord]?.sign;
-  const d1AdSign = d1Planets[adLord]?.sign;
-  const d1PdSign = pdLord ? d1Planets[pdLord]?.sign : undefined;
-
-  // D-1: MD-AD
-  if (d1MdSign && d1AdSign) {
-    const pairRes = evaluateInterLordPair(mdLord, d1MdSign, adLord, d1AdSign);
-    if (pairRes) {
-      const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-      lines.push(`  MD-AD: ${mdLord} (${d1MdSign}) & ${adLord} (${d1AdSign})`);
-      lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-      if (pairRes.conflictType) {
-        conflicts.push({ chart: 'D-1', pair: 'MD-AD', type: pairRes.conflictType, details: `${mdLord} in ${d1MdSign} vs ${adLord} in ${d1AdSign}` });
-      }
-    }
-  } else {
-    lines.push(`  MD-AD: Placements not fully specified in D-1 payload.`);
-  }
-
-  // D-1: AD-PD
-  if (pdLord) {
-    if (d1AdSign && d1PdSign) {
-      const pairRes = evaluateInterLordPair(adLord, d1AdSign, pdLord, d1PdSign);
-      if (pairRes) {
-        const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-        lines.push(`  AD-PD: ${adLord} (${d1AdSign}) & ${pdLord} (${d1PdSign})`);
-        lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-        if (pairRes.conflictType) {
-          conflicts.push({ chart: 'D-1', pair: 'AD-PD', type: pairRes.conflictType, details: `${adLord} in ${d1AdSign} vs ${pdLord} in ${d1PdSign}` });
-        }
-      }
-    } else {
-      lines.push(`  AD-PD: Placements not fully specified in D-1 payload.`);
-    }
-
-    // D-1: MD-PD
-    if (d1MdSign && d1PdSign) {
-      const pairRes = evaluateInterLordPair(mdLord, d1MdSign, pdLord, d1PdSign);
-      if (pairRes) {
-        const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-        lines.push(`  MD-PD: ${mdLord} (${d1MdSign}) & ${pdLord} (${d1PdSign})`);
-        lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-        if (pairRes.conflictType) {
-          conflicts.push({ chart: 'D-1', pair: 'MD-PD', type: pairRes.conflictType, details: `${mdLord} in ${d1MdSign} vs ${pdLord} in ${d1PdSign}` });
-        }
-      }
-    } else {
-      lines.push(`  MD-PD: Placements not fully specified in D-1 payload.`);
-    }
-  } else {
-    lines.push('  AD-PD & MD-PD: Pratyantardasha (PD) lord not provided in dasha payload.');
-  }
-  lines.push('');
-
-  // ─────────────────────────────────────────────────────────────
-  // 2. D-9 (Navamsha) Relationships
-  // ─────────────────────────────────────────────────────────────
-  lines.push('D-9 (Navamsha Signs):');
-  const d9MdSign = d9Planets[mdLord]?.sign;
-  const d9AdSign = d9Planets[adLord]?.sign;
-  const d9PdSign = pdLord ? d9Planets[pdLord]?.sign : undefined;
-
-  // D-9: MD-AD
-  if (d9MdSign && d9AdSign) {
-    const pairRes = evaluateInterLordPair(mdLord, d9MdSign, adLord, d9AdSign);
-    if (pairRes) {
-      const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-      lines.push(`  MD-AD: ${mdLord} (${d9MdSign}) & ${adLord} (${d9AdSign})`);
-      lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-      if (pairRes.conflictType) {
-        conflicts.push({ chart: 'D-9', pair: 'MD-AD', type: pairRes.conflictType, details: `${mdLord} in ${d9MdSign} vs ${adLord} in ${d9AdSign}` });
-      }
-    }
-  } else {
-    lines.push(`  MD-AD: Placements not fully specified in D-9 payload.`);
-  }
-
-  // D-9: AD-PD
-  if (pdLord) {
-    if (d9AdSign && d9PdSign) {
-      const pairRes = evaluateInterLordPair(adLord, d9AdSign, pdLord, d9PdSign);
-      if (pairRes) {
-        const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-        lines.push(`  AD-PD: ${adLord} (${d9AdSign}) & ${pdLord} (${d9PdSign})`);
-        lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-        if (pairRes.conflictType) {
-          conflicts.push({ chart: 'D-9', pair: 'AD-PD', type: pairRes.conflictType, details: `${adLord} in ${d9AdSign} vs ${pdLord} in ${d9PdSign}` });
-        }
-      }
-    } else {
-      lines.push(`  AD-PD: Placements not fully specified in D-9 payload.`);
-    }
-
-    // D-9: MD-PD
-    if (d9MdSign && d9PdSign) {
-      const pairRes = evaluateInterLordPair(mdLord, d9MdSign, pdLord, d9PdSign);
-      if (pairRes) {
-        const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-        lines.push(`  MD-PD: ${mdLord} (${d9MdSign}) & ${pdLord} (${d9PdSign})`);
-        lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-        if (pairRes.conflictType) {
-          conflicts.push({ chart: 'D-9', pair: 'MD-PD', type: pairRes.conflictType, details: `${mdLord} in ${d9MdSign} vs ${pdLord} in ${d9PdSign}` });
-        }
-      }
-    } else {
-      lines.push(`  MD-PD: Placements not fully specified in D-9 payload.`);
-    }
-  } else {
-    lines.push('  AD-PD & MD-PD: Pratyantardasha (PD) lord not provided in dasha payload.');
-  }
-  lines.push('');
-
-  // ─────────────────────────────────────────────────────────────
-  // 3. Transit (Current Signs from Moon) Relationships
-  // ─────────────────────────────────────────────────────────────
-  lines.push('Transit (Current Signs from Moon):');
-  const tMd = getTransitInfo(mdLord);
-  const tAd = getTransitInfo(adLord);
-  const tPd = pdLord ? getTransitInfo(pdLord) : null;
-
-  // Transit: MD-AD
-  if (tMd && tAd) {
-    const pairRes = evaluateInterLordPair(mdLord, tMd.sign, adLord, tAd.sign, tMd.houseFromMoon, tAd.houseFromMoon);
-    if (pairRes) {
-      const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-      lines.push(`  MD-AD: ${mdLord} (${tMd.sign}, ${tMd.houseFromMoon}H from Moon) & ${adLord} (${tAd.sign}, ${tAd.houseFromMoon}H from Moon)`);
-      lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-      if (pairRes.conflictType) {
-        conflicts.push({ chart: 'Transit', pair: 'MD-AD', type: pairRes.conflictType, details: `${mdLord} in ${tMd.sign} (${tMd.houseFromMoon}H) vs ${adLord} in ${tAd.sign} (${tAd.houseFromMoon}H)` });
-      }
-    }
-  } else {
-    lines.push(`  MD-AD: Transit positions currently unavailable.`);
-  }
-
-  // Transit: AD-PD
-  if (pdLord) {
-    if (tAd && tPd) {
-      const pairRes = evaluateInterLordPair(adLord, tAd.sign, pdLord, tPd.sign, tAd.houseFromMoon, tPd.houseFromMoon);
-      if (pairRes) {
-        const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-        lines.push(`  AD-PD: ${adLord} (${tAd.sign}, ${tAd.houseFromMoon}H from Moon) & ${pdLord} (${tPd.sign}, ${tPd.houseFromMoon}H from Moon)`);
-        lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-        if (pairRes.conflictType) {
-          conflicts.push({ chart: 'Transit', pair: 'AD-PD', type: pairRes.conflictType, details: `${adLord} in ${tAd.sign} (${tAd.houseFromMoon}H) vs ${pdLord} in ${tPd.sign} (${tPd.houseFromMoon}H)` });
-        }
-      }
-    } else {
-      lines.push(`  AD-PD: Transit positions currently unavailable.`);
-    }
-
-    // Transit: MD-PD
-    if (tMd && tPd) {
-      const pairRes = evaluateInterLordPair(mdLord, tMd.sign, pdLord, tPd.sign, tMd.houseFromMoon, tPd.houseFromMoon);
-      if (pairRes) {
-        const relStr = pairRes.conflictType ? pairRes.description : `${pairRes.description} [No conflict]`;
-        lines.push(`  MD-PD: ${mdLord} (${tMd.sign}, ${tMd.houseFromMoon}H from Moon) & ${pdLord} (${tPd.sign}, ${tPd.houseFromMoon}H from Moon)`);
-        lines.push(`         Separation = ${pairRes.separation} → ${relStr}`);
-        if (pairRes.conflictType) {
-          conflicts.push({ chart: 'Transit', pair: 'MD-PD', type: pairRes.conflictType, details: `${mdLord} in ${tMd.sign} (${tMd.houseFromMoon}H) vs ${pdLord} in ${tPd.sign} (${tPd.houseFromMoon}H)` });
-        }
-      }
-    } else {
-      lines.push(`  MD-PD: Transit positions currently unavailable.`);
-    }
-  } else {
-    lines.push('  AD-PD & MD-PD: Pratyantardasha (PD) lord not provided in dasha payload.');
-  }
-  lines.push('');
-
-  // ─────────────────────────────────────────────────────────────
-  // 4. Synthesis & Active Conflict Alerts
-  // ─────────────────────────────────────────────────────────────
-  lines.push('SYNTHESIS & ACTIVE CONFLICT ALERTS:');
-  if (conflicts.length === 0) {
-    lines.push('  ✓ No Dwidwadasha (2-12) or Shadashtaka (6-8) conflicts detected across D-1, D-9, or Transit.');
-    lines.push('  ✓ Dasha lords are operating in mutual harmony (Kendra / Trikona / Sahaja-Labha / Samasaptaka).');
-    lines.push('  ✓ Timing Assessment: Operating periods support unobstructed manifestation.');
-  } else {
-    for (const c of conflicts) {
-      if (c.chart === 'Transit') {
-        lines.push(`  ⚠️⚠️ TRANSIT ALERT (${c.pair} ${c.type}): ${c.details} — IMMEDIATE TIMING IMPEDIMENT`);
-      } else if (c.chart === 'D-1') {
-        lines.push(`  ⚠️ D-1 NATAL ALERT (${c.pair} ${c.type}): ${c.details} — Period-level friction or expenditure`);
-      } else {
-        lines.push(`  ⚠️ D-9 NAVAMSHA ALERT (${c.pair} ${c.type}): ${c.details} — Underlying dharmic or fruit friction`);
-      }
-    }
-
-    const hasTransitConflict = conflicts.some(c => c.chart === 'Transit');
-    const hasD1Conflict = conflicts.some(c => c.chart === 'D-1');
-    const hasD9Conflict = conflicts.some(c => c.chart === 'D-9');
-
-    lines.push('');
-    lines.push('CRITICAL PARASHARI TIMING ADVISORY:');
-    if (hasTransitConflict) {
-      lines.push('  - TRANSIT OVERRIDE: Operating dasha lords are currently in conflict in Gochara. Even if natal or D-9 promise is supportive, current timing will face acute resistance, delays, or misunderstandings. Advise patience, remedies, and waiting for favorable transit alignment.');
-    }
-    if (hasD1Conflict) {
-      lines.push('  - NATAL VULNERABILITY: Natal lord tension requires conscious effort, expenditure management, or health vigilance during this sub-period.');
-    }
-    if (hasD9Conflict) {
-      lines.push('  - D-9 MODIFICATION: Results may not match initial surface expectations without perseverance.');
-    }
-  }
-
-  return lines.join('\n');
+  const report = generateMahadashaAntardashaReport(engineInput);
+  return formatMahadashaAntardashaReportAsText(report);
 }
 
 /**

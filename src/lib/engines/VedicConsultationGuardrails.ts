@@ -407,7 +407,7 @@ export function validateConsultationSchema(response: string): SchemaValidationRe
       title: 'దశా-అంతర్దశా విశ్లేషణ',
       content: extractSectionContent(response, SECTION_3_REGEX, SECTION_4_REGEX),
       hasTimeline: /మహాదశ|అంతర్దశ|MD|AD|కాలం|తేదీ/i.test(response),
-      hasInterLordRelation: /షడాష్టక|ద్విర్ద్వాదశ|సమసప్తక|సంబంధం|Inter-Lord|2\/12|6\/8/i.test(response),
+      hasInterLordRelation: /షడాష్టక|ద్విర్ద్వాదశ|సమసప్తక|సంబంధం|Inter-Lord|Dwi-Dwadash|Dwidwadasha|Shadashtak|Shadashtaka|2\/12|6\/8|2-12|6-8|Forward\s*Counts|Asymmetric/i.test(response),
     },
     section4: {
       title: 'గోచార విశ్లేషణ',

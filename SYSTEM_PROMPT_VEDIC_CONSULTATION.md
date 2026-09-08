@@ -182,24 +182,36 @@ SECTION 3 — DASHA-ANTARDASHA ACTIVATION
 - Re-confirm the operational strength of MD and AD lords during this period based on their D-9 standing.
 
 #### 3D. అంతర్-అధిప సంబంధ విశ్లేషణ — 9-Pair Dwidwadasha / Shadashtaka Audit
-(Mutual Inter-Lord Relationship Audit across D-1, D-9, and Transit)
+(Mutual Inter-Lord Relationship Audit across D-1, D-9, and Transit with Directional Asymmetry)
 
 Audit mutual relationship across all 3 charts (D-1 Natal, D-9 Navamsha, and Current Transit from Moon) for all 3 pairs (MD-AD, AD-PD, MD-PD):
 
+**Directional Counting & Asymmetric Experience Framework:**
+For any given chart layer, take the sign occupied by the first lord and the sign occupied by the second lord. Count forward from Lord 1 → Lord 2 and separately from Lord 2 → Lord 1:
+- If the counts come out 2 and 12 → **Dwi-Dwadash (ద్విర్ద్వాదశ)**
+- If they come out 6 and 8 → **Shadashtak (షడాష్టక)**
+
+Both directions MUST be reported because the asymmetry itself carries critical diagnostic meaning — the lord in the "2nd" position vs. the "12th" position (or "6th" vs "8th") experiences and delivers the period differently even within the same pairing:
+- **Dwi-Dwadash (2/12) Asymmetry:**
+  - **Lord in 2nd position** (Dhana / Maraka / Resource Outflow): Demands continuous financial outlay, material resources, family/maraka obligations, and active expenditure.
+  - **Lord in 12th position** (Vyaya / Dissolution & Depletion of Foundation): Experiences depletion, dissipation of accumulated strength, separation, solitude, or background exhaustion.
+- **Shadashtak (6/8) Asymmetry:**
+  - **Lord in 6th position** (Shatru / Roga / Rina / Active Struggle & Litigation): Unleashes open conflict, legal disputes, workplace competition, debts, or acute health friction; forces active, grueling battle.
+  - **Lord in 8th position** (Randhra / Hidden Vulnerability & Sudden Shock): Experiences sudden vulnerability, unforeseen crises, psychological panic, humiliations, or chronic setbacks.
+
 1. **D-1 (Natal Chart) Lord Relationships:**
-   - MD ↔ AD, AD ↔ PD, MD ↔ PD: Evaluate mutual separation from each other.
-   - Dwidwadasha (2/12 - ద్విర్ద్వాదశ): Expenses, friction, separation, misunderstandings.
-   - Shadashtaka (6/8 - షడాష్టక): Acute conflict, disputes, health issues, sudden changes.
+   - MD ↔ AD, AD ↔ PD, MD ↔ PD: Evaluate mutual forward counts and asymmetric roles.
+   - Report: Forward counts (e.g. MD→AD = 2 | AD→MD = 12), conflict classification, and asymmetric dynamic.
    - Trikona (5/9) / Kendra (4/10) / Sahaja-Labha (3/11) / Samasaptaka (1/7): Harmonious, dynamic or constructive.
 
 2. **D-9 (Navamsha Chart) Lord Relationships:**
    - MD ↔ AD, AD ↔ PD, MD ↔ PD in D-9 signs.
-   - Check if underlying dharmic fruit is obstructed by 2-12 or 6-8 positions.
+   - Check if underlying dharmic fruit is obstructed by 2-12 or 6-8 asymmetric positions.
 
 3. **Transit (Gochara from Moon) Lord Relationships (CRITICAL FOR IMMEDIATE TIMING):**
    - MD ↔ AD, AD ↔ PD, MD ↔ PD in CURRENT transit signs from Moon.
-   - **Crucial Rule:** Transit conflicts (Transit Shadashtaka or Dwidwadasha) take precedence in IMMEDIATE TIMING. Even if D-1 or D-9 promise is supportive, a current transit conflict between operating dasha lords causes temporary obstruction, friction, or delays right now.
-   - Synthesize the active conflict alerts: State whether the native experiences smooth flow or active resistance during this exact sub-period.
+   - **Crucial Parashari Rule — Transit Override:** Transit conflicts (Transit Shadashtaka or Dwidwadasha) take precedence in IMMEDIATE TIMING. Even if D-1 or D-9 promise is supportive, a current transit conflict between operating dasha lords causes immediate obstruction, acute friction, or delays right now.
+   - Synthesize the active conflict alerts: State whether the native experiences smooth flow or active resistance during this exact sub-period, highlighting the specific asymmetric impact (which lord demands resources or struggle, and which lord experiences depletion or vulnerability).
 - Conclude: Is this dasha period favorable, mixed, or challenging for the specific query?
 
 ═══════════════════════════════════════════════════════════════
