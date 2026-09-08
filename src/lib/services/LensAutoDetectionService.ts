@@ -50,6 +50,14 @@ export class LensAutoDetectionService {
       systemPrompt: 'You are the QUICK Astro Engine, an expert Vedic Astrologer providing precise structured analysis in Telugu.',
       supportedIntents: ['quick', 'telugu', 'analysis', 'structured', 'comprehensive'],
       confidenceThreshold: 70,
+    },
+    classical_jyotish: {
+      id: 'classical_jyotish',
+      label: 'Classical Jyotish Guru',
+      description: 'Traditional Jyotish',
+      systemPrompt: 'You are Jyothishya Guru...',
+      supportedIntents: ['general'],
+      confidenceThreshold: 75,
     }
   };
 
@@ -78,6 +86,7 @@ export class LensAutoDetectionService {
       vedic_remedial: 0,
       kp_stellar: 0,
       quick: 0,
+      classical_jyotish: 0,
     };
 
     // Score based on keyword matches

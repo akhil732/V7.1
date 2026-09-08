@@ -12,6 +12,7 @@ import { VimshottariDashaView } from '../components/VimshottariDashaView';
 import { PanchangamView } from '../components/PanchangamView';
 import { RVATripleCharts } from '../components/KP/RVATripleCharts';
 import { AdvancedAITab } from '../components/AdvancedAITab';
+import { TraditionalAITab } from '../components/BirthChartReport/TraditionalAITab';
 import { FloatingAIChatWidget } from '../components/FloatingAIChatWidget';
 import { SanathanamReportPage } from '../components/BirthChartReport/turia/SanathanamReportPage';
 import { LifePartnerReport } from '../components/LifePartnerReport';
@@ -36,7 +37,7 @@ import {
   formatRemainingTimeInLanguage 
 } from '../lib/i18n/astrologicalTerms';
 
-export type BirthChartTab = 'overview' | 'd1' | 'transit' | 'dasha' | 'partner' | 'report' | 'ai';
+export type BirthChartTab = 'overview' | 'd1' | 'transit' | 'dasha' | 'partner' | 'report' | 'ai' | 'traditional_ai';
 
 interface BirthChartPageProps {
   horoscopeReport: any | null;
@@ -320,7 +321,8 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
     { key: 'dasha', label: labels.dasha, icon: <Clock className="w-4 h-4" /> },
     { key: 'partner', label: labels.partner, icon: <Heart className="w-4 h-4" /> },
     { key: 'report', label: labels.report, icon: <BookOpen className="w-4 h-4" /> },
-    { key: 'ai', label: labels.ai, icon: <MessageSquare className="w-4 h-4" /> }
+    { key: 'ai', label: labels.ai, icon: <MessageSquare className="w-4 h-4" /> },
+    { key: 'traditional_ai', label: 'Traditional AI', icon: <Sparkles className="w-4 h-4 text-[#F5A623]" /> }
   ];
 
   return (
@@ -624,6 +626,19 @@ export const BirthChartPage: React.FC<BirthChartPageProps> = ({
         {activeTab === 'ai' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <AdvancedAITab
+              birthDetails={birthDetails}
+              horoscopeData={horoscopeReport}
+              language={language}
+              profiles={savedProfiles}
+              onSelectProfile={onSelectProfile}
+            />
+          </div>
+        )}
+
+        {/* TAB 9: TRADITIONAL AI */}
+        {activeTab === 'traditional_ai' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <TraditionalAITab
               birthDetails={birthDetails}
               horoscopeData={horoscopeReport}
               language={language}

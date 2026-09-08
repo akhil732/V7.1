@@ -165,7 +165,13 @@ export class KeywordMatcher {
  * Used when keyword matching confidence is below threshold
  */
 export class SemanticAnalyzer {
-  private static readonly GEMINI_MODEL = 'gemini-3.8-flash';
+  private static readonly CANDIDATE_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.7-flash',
+    'gemini-3.1-flash-lite'
+  ];
 
   /**
    * Analyze query semantically using Gemini
@@ -207,30 +213,39 @@ export class SemanticAnalyzer {
       }
 
       const prompt = this.buildSemanticPrompt(query);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
-      });
+      for (const model of this.CANDIDATE_MODELS) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-      if (!response.ok) {
-        console.warn('Gemini API direct call returned non-OK status:', response.statusText);
-        return null;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: prompt
+                }]
+              }]
+            })
+          });
+
+          if (!response.ok) {
+            console.warn(`Gemini API call on ${model} returned status ${response.status}`);
+            continue;
+          }
+
+          const data = await response.json();
+          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const result = this.parseSemanticResponse(responseText, query);
+          if (result) return result;
+        } catch (mErr) {
+          console.warn(`Failed intent analysis on model ${model}:`, mErr);
+        }
       }
-
-      const data = await response.json();
-      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      return this.parseSemanticResponse(responseText, query);
+      return null;
     } catch (error) {
       console.error('Semantic analysis error:', error);
       return null;

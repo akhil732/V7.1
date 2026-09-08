@@ -58,9 +58,16 @@ const GOOGLE_AI_STUDIO_API_KEY =
   process.env.GEMINI_API_KEY ||
   '';
 
-const GEMINI_MODEL =
-  process.env.GEMINI_MODEL ||
-  'gemini-2.5-flash';
+const CANDIDATE_MODELS = [
+  process.env.GEMINI_MODEL,
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-3.1-flash-lite'
+].filter(Boolean) as string[];
+
+const GEMINI_MODEL = CANDIDATE_MODELS[0] || 'gemini-3.5-flash-lite';
 
 // Load system prompt from file system or fallback
 function loadSystemPrompt(): string {
@@ -207,31 +214,42 @@ export async function streamGeminiResponse(fullPrompt: string, systemPromptText:
   }
 
   const ai = new GoogleGenerativeAI(GOOGLE_AI_STUDIO_API_KEY);
-  const model = ai.getGenerativeModel({
-    model: GEMINI_MODEL,
-    systemInstruction: systemPromptText,
-    safetySettings: [
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-    ],
-  });
+  let lastError: any = null;
 
-  const result = await model.generateContentStream(fullPrompt);
-  return result.stream;
+  for (const modelName of CANDIDATE_MODELS) {
+    try {
+      const model = ai.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemPromptText,
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+        ],
+      });
+
+      const result = await model.generateContentStream(fullPrompt);
+      return result.stream;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Vedic Handler] Model ${modelName} streaming error, falling back to next candidate:`, err);
+    }
+  }
+
+  throw lastError || new Error('All Gemini candidate models failed to stream.');
 }
 
 /**

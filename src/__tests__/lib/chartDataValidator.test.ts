@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { ChartDataValidator } from '../../lib/engines/ChartDataValidator';
 
 describe('ChartDataValidator', () => {

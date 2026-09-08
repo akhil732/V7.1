@@ -179,7 +179,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     vedic_divisional: 'Divisional Charts & Yogas',
     vedic_remedial: 'Vedic Remedies & Upaya',
     kp_stellar: 'KP Stellar Astrology',
-    quick: 'QUICK Astro Engine (Telugu)'
+    quick: 'QUICK Astro Engine (Telugu)',
+    classical_jyotish: 'Classical Jyotish Guru'
   };
 
   const cycleLens = () => {

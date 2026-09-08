@@ -9,6 +9,7 @@ import {
   computeUnifiedKPGroundTruth,
   buildSystemPrompt
 } from '../components/AdvancedAITab/UnifiedKPGroundTruthEngine';
+import { buildTraditionalAIPrompt } from '../lib/astrology/traditionalContextBuilder';
 import { generateVedicBirthChartMarkdown } from '../lib/vedicMarkdownGenerator';
 import { computeLiveTransitSnapshot } from '../lib/engines/LiveTransitEngine';
 
@@ -17,6 +18,7 @@ interface UseAdvancedAIChatOptions {
   horoscopeData?: any;
   userId?: string;
   language?: 'en' | 'hi' | 'te';
+  persona?: ConsultationPersona | 'classical_jyotish';
 }
 
 export interface ChatSession {
@@ -26,11 +28,12 @@ export interface ChatSession {
   messages: ConversationMessage[];
 }
 
-export function useAdvancedAIChat({ birthData, horoscopeData, userId, language = 'en' }: UseAdvancedAIChatOptions) {
+export function useAdvancedAIChat({ birthData, horoscopeData, userId, language = 'en', persona = 'quick' }: UseAdvancedAIChatOptions) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
-  const activePersona: ConsultationPersona = 'quick';
+  
+  const activePersona: ConsultationPersona = persona as ConsultationPersona;
   const [error, setError] = useState<string | null>(null);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -248,26 +251,25 @@ export function useAdvancedAIChat({ birthData, horoscopeData, userId, language =
     let accumulated = '';
 
     try {
-      const unifiedGroundTruth = computeUnifiedKPGroundTruth(text, birthData, horoscopeData);
-      const kpGroundTruths = service.computeKPGroundTruths(text, birthData, horoscopeData);
-      const consultationFacts = service.computeConsultationFacts(birthData, horoscopeData);
+      let systemPrompt = '';
+      let kpGroundTruths: any = null;
+      let traditionalAnalysis: any = null;
 
-      const queryIntent = (service as any)['queryEngine'].recognizeIntent(text);
-      const domainClassification = (service as any)['queryEngine'].classifyDomain(queryIntent);
+      if (activePersona === 'classical_jyotish') {
+        traditionalAnalysis = service.analyzeQuery(text, birthData, horoscopeData);
+        kpGroundTruths = service.computeKPGroundTruths(text, birthData, horoscopeData);
+        systemPrompt = buildTraditionalAIPrompt(birthData, horoscopeData, text, language, traditionalAnalysis);
+      } else {
+        const unifiedGroundTruth = computeUnifiedKPGroundTruth(text, birthData, horoscopeData);
+        kpGroundTruths = service.computeKPGroundTruths(text, birthData, horoscopeData);
+        const baseSystemPrompt = buildSystemPrompt(activePersona, unifiedGroundTruth, birthData.name || 'Native');
 
-      const baseSystemPrompt = buildSystemPrompt(activePersona, unifiedGroundTruth, birthData.name || 'Native');
-
-      // ─── NATAL CHART SOURCE OF TRUTH ───────────────────────────────────────
-      // Generate the structured MD report and prepend it to the system prompt.
-      // This is the single authoritative natal data block for all AI responses.
-      // The AI MUST treat values in this section as ground truth and NEVER
-      // fabricate, estimate, or contradict any planetary position, house placement,
-      // nakshatra, dasha date, or dignity listed here.
-      const d1 = horoscopeData?.horoscope?.divisional_charts?.["D-1_rasi"] || horoscopeData?.rasi || {};
-      const moonSign = d1.Moon?.sign || 'Aries';
-      const transitData = computeLiveTransitSnapshot(moonSign, new Date());
-      const birthChartMd = generateVedicBirthChartMarkdown(birthData, horoscopeData, transitData);
-      const systemPrompt = `═══════════════════════════════════════════════════════════════════
+        // ─── NATAL CHART SOURCE OF TRUTH ───────────────────────────────────────
+        const d1 = horoscopeData?.horoscope?.divisional_charts?.["D-1_rasi"] || horoscopeData?.rasi || {};
+        const moonSign = d1.Moon?.sign || 'Aries';
+        const transitData = computeLiveTransitSnapshot(moonSign, new Date());
+        const birthChartMd = generateVedicBirthChartMarkdown(birthData, horoscopeData, transitData);
+        systemPrompt = `═══════════════════════════════════════════════════════════════════
 NATAL CHART — SOURCE OF TRUTH (IMMUTABLE REFERENCE DATA)
 ═══════════════════════════════════════════════════════════════════
 
@@ -287,13 +289,19 @@ AI ENGINE CONFIGURATION & ANALYSIS RULES (follows below)
 ═══════════════════════════════════════════════════════════════════
 
 ${baseSystemPrompt}`;
+      }
+
+      const consultationFacts = service.computeConsultationFacts(birthData, horoscopeData);
+      const queryIntent = (service as any)['queryEngine'].recognizeIntent(text);
+      const domainClassification = (service as any)['queryEngine'].classifyDomain(queryIntent);
       // ────────────────────────────────────────────────────────────────────────
 
       const userMsgPayload = (service as any)['buildUserMessage'](
         text,
         consultationFacts,
         domainClassification,
-        messages
+        messages,
+        language || 'te'
       );
 
       const res = await fetch('/api/advanced-ai/stream', {
@@ -305,7 +313,7 @@ ${baseSystemPrompt}`;
           userQuery: text,
           conversationHistory: newHistory,
           persona: activePersona,
-          language: language || 'en'
+          language: language || 'te'
         }),
         signal: abortControllerRef.current.signal
       });
@@ -357,7 +365,7 @@ ${baseSystemPrompt}`;
           conversationHistory: messages,
           persona: activePersona,
           userId,
-          language: language || 'en'
+          language: language || 'te'
         });
         accumulated = fallbackRes.content;
       }
@@ -369,7 +377,9 @@ ${baseSystemPrompt}`;
         metadata: {
           queryDomain: domainClassification.domain,
           confidence: queryIntent.confidence,
+          vedicGroundTruths: kpGroundTruths,
           kpGroundTruths,
+          traditionalAnalysis,
           persona: activePersona
         }
       };

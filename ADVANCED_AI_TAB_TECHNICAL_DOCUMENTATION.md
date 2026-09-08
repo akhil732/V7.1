@@ -37,9 +37,12 @@ The Advanced AI Consultation module transforms standard static astrological repo
 
 ### 2.1 Hybrid Context Framing (KP Verdict + Deep Synthesis)
 To eliminate LLM hallucination and contradictory astrological claims:
-1. **Deterministic Computation**: Before prompting Gemini, the engine computes the 8-Step KP Verification Chain and House Gatekeeper statuses via `EnhancedGeminiConsultationService`.
-2. **Immutable Ground Truths**: The primary query domain, target house, Cusp Sub Lord, KP Cusp Promise (`YES`, `DELAYED`, `NO`), Gatekeeper Status (`OPEN`, `CLOSED`), and active Dasha period are injected directly into the system prompt as immutable astrological laws.
-3. **Guardrail Enforcement**: If a house gatekeeper is closed or promised status is negative, the model is strictly forbidden from predicting immediate event completion, enforcing structured patience and remedial guidance.
+1. **Deterministic Computation**: Before prompting Gemini, the engine computes the 8-Step KP Verification Chain, House Gatekeeper statuses, and inter-lord relationships.
+2. **Immutable Ground Truths (GroundTruthBlockGenerator)**: The system assembles an immutable 7-section Ground Truth Block containing:
+   - Primary query domain and target house
+   - KP Cusp Promise (`YES`, `DELAYED`, `NO`) and Gatekeeper Status (`OPEN`, `CLOSED`)
+   - **Mahadasha-Antardasha Relationship Audit**: Powered by the `MahadashaAntardashaRelationshipEngine`, analyzing Dwidwadasha (2-12) and Shadashtaka (6-8) tensions across D-1 (Natal), D-9 (Navamsha), and Transit (Gochara).
+3. **Guardrail Enforcement**: If a house gatekeeper is closed, a negative promise exists, or a critical transit Shadashtaka is detected, the model is strictly forbidden from predicting immediate event completion and must recommend patience or remedies.
 
 ### 2.2 Multi-Turn Interactive Consultation & Streaming SSE
 - **Streaming Server-Sent Events (`/api/advanced-ai/stream`)**: Responses stream token-by-token using `TextDecoder` and `ReadableStream`, providing a fluid typewriter experience.
@@ -65,6 +68,8 @@ Users can toggle between three specialized analytical lenses:
 | :--- | :--- |
 | `/src/components/AdvancedAITab.tsx` | Main interactive UI for chat, persona selection, and live streaming. |
 | `/src/lib/services/EnhancedGeminiConsultationService.ts` | Core business logic, KP ground truth computation, prompt builder, and streaming client. |
+| `/GroundTruthBlockGenerator.ts` | Assembles the immutable 7-section Ground Truth Block injected into the AI system prompt. |
+| `/src/lib/engines/MahadashaAntardashaRelationshipEngine.ts` | Detects Dwidwadasha (2-12) and Shadashtaka (6-8) relationships between MD, AD, and PD lords across D-1, D-9, and Transit. |
 | `/src/hooks/useQueryConsultation.ts` | React hook managing consultation submissions and SSE streaming callbacks. |
 | `/src/hooks/useConsultation.ts` | SWR-style caching and background revalidation hook for chart reports. |
 | `/src/components/AstrologyTooltip.tsx` | Context-aware popover tooltips explaining complex Sanskrit/KP terms (Bhukti, Gochara, Sub-Lord). |

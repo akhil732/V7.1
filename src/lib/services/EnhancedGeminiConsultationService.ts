@@ -11,8 +11,35 @@ import {
   computeUnifiedKPGroundTruth,
   buildSystemPrompt as buildUnifiedSystemPrompt
 } from "../../components/AdvancedAITab/UnifiedKPGroundTruthEngine";
+import {
+  extractPlanetsList,
+  extractAscendantSign,
+  extractAscendantLongitude,
+  extractMoonLongitude,
+  getHouseFromAscendant,
+  getHouseFromMoon,
+  getHouseLord,
+  getPlanetStrength,
+  isDwidwadasha,
+  isShashtashtaka,
+  getSadeSatiStatus,
+  getDashaRelationshipDescription,
+  getHouseOccupancy,
+  ZODIAC_SIGNS,
+  SIGN_LORDS,
+  PlanetStrengthResult,
+  SadeSatiResult
+} from "../astrology/traditionalVedicCalculations";
+import { buildTraditionalAIPrompt } from "../astrology/traditionalContextBuilder";
+import { computeLiveTransitSnapshot } from "../engines/LiveTransitEngine";
 
-export type ConsultationPersona = "classical_parashari" | "vedic_divisional" | "vedic_remedial" | "kp_stellar" | "quick";
+export type ConsultationPersona =
+  | "classical_parashari"
+  | "vedic_divisional"
+  | "vedic_remedial"
+  | "kp_stellar"
+  | "quick"
+  | "classical_jyotish";
 
 export interface ConversationMessage {
   role: "user" | "assistant";
@@ -24,6 +51,7 @@ export interface ConversationMessage {
     sources?: Array<{ title: string; url: string }>;
     vedicGroundTruths?: VedicGroundTruths;
     kpGroundTruths?: VedicGroundTruths; // backward compatibility alias
+    traditionalAnalysis?: ComprehensiveVedicAnalysis;
     persona?: ConsultationPersona;
   };
 }
@@ -52,7 +80,7 @@ export interface VedicGroundTruths {
     promise: "YES" | "DELAYED" | "NO";
     status: "OPEN" | "RESTRICTED";
   }>;
-  // Aliases for legacy component bindings
+  // Backward compatibility fields for legacy UI components
   cuspSubLord?: string;
   cuspPromise?: "YES" | "DELAYED" | "NO";
   rulingPlanets?: string[];
@@ -84,18 +112,190 @@ export class ConsultationError extends Error {
   }
 }
 
-const SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-const SIGN_LORDS: Record<string, string> = {
-  Aries: "Mars", Taurus: "Venus", Gemini: "Mercury", Cancer: "Moon",
-  Leo: "Sun", Virgo: "Mercury", Libra: "Venus", Scorpio: "Mars",
-  Sagittarius: "Jupiter", Capricorn: "Saturn", Aquarius: "Saturn", Pisces: "Jupiter"
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// TRADITIONAL VEDIC ANALYSIS INTERFACES (Natal → Dasha → Transit → Verdict)
+// ─────────────────────────────────────────────────────────────────────────────
 
-function getHouseSign(lagnaSign: string, houseNumber: number): string {
-  const idx = SIGNS.indexOf(lagnaSign);
-  if (idx === -1) return "Taurus";
-  return SIGNS[(idx + houseNumber - 1) % 12];
+export interface NatalAnalysisResult {
+  lagnaSign: string;
+  lagnaLord: string;
+  relevantHouses: number[];
+  relevantKarakas: string[];
+  houseOccupancy: Array<{ house: number; occupants: any[] }>;
+  houseLords: Array<{
+    house: number;
+    lord: string;
+    sign: string;
+    housePosition: number;
+    strength: PlanetStrengthResult;
+  }>;
+  karakaAnalysis: Array<{
+    karaka: string;
+    sign: string;
+    house: number;
+    strength: PlanetStrengthResult;
+  }>;
+  conclusion: string;
+  verdict: 'strong' | 'moderate' | 'delayed' | 'obstructed';
 }
+
+export interface DashaAnalysisResult {
+  md: {
+    lord: string;
+    house: number;
+    sign: string;
+    strength: PlanetStrengthResult;
+    startDate?: Date;
+    endDate?: Date;
+  };
+  ad: {
+    lord: string;
+    house: number;
+    sign: string;
+    strength: PlanetStrengthResult;
+    startDate?: Date;
+    endDate?: Date;
+  };
+  pd?: {
+    lord: string;
+    house: number;
+    sign: string;
+    strength: PlanetStrengthResult;
+  };
+  natalPositions: Array<{ role: 'MD' | 'AD' | 'PD'; lord: string; house: number }>;
+  dashaRelationships: Array<{ pair: string; type: string; description: string }>;
+  doubleTrika: boolean;
+  conclusion: string;
+  verdict: 'supportive' | 'neutral' | 'challenging' | 'critical';
+}
+
+export interface TransitAnalysisResult {
+  moonSign: string;
+  moonLongitude: number;
+  allPlanetaryTransits?: Array<{
+    planet: string;
+    sign: string;
+    houseFromMoon: number;
+    degreeInSign?: number;
+    isRetrograde?: boolean;
+    classification?: string;
+    classicalResultTelugu?: string;
+  }>;
+  dashaLordPositions: Array<{
+    lord: string;
+    transitSign: string;
+    houseFromMoon: number;
+    description: string;
+  }>;
+  karakaTransit: Array<{
+    karaka: string;
+    transitSign: string;
+    houseFromMoon: number;
+    description: string;
+  }>;
+  sadeSati: SadeSatiResult;
+  transitJupiter: { sign: string; houseFromMoon: number; aspectsRelevant: boolean };
+  transitSaturn: { sign: string; houseFromMoon: number; aspectsRelevant: boolean };
+  conclusion: string;
+  verdict: 'confirming' | 'neutral' | 'contradicting';
+}
+
+export interface FinalVerdictResult {
+  summary: string;
+  support: string;
+  activation: string;
+  currentCondition: string;
+  verdict: 'Favourable' | 'Mixed' | 'Delayed' | 'Difficult';
+  timeline: string;
+  actionRecommendations: string[];
+  validationQuestions: string[];
+}
+
+export interface ComprehensiveVedicAnalysis {
+  domain?: string;
+  natalAnalysis: NatalAnalysisResult;
+  dashaAnalysis: DashaAnalysisResult;
+  transitAnalysis: TransitAnalysisResult;
+  finalVerdict: FinalVerdictResult;
+  historicalEventWindows?: Array<{ periodLabel: string; validationQuestion: string }>;
+  futureTimingWindows?: Array<{ periodLabel: string; description: string; favorabilityScore: number; action: string }>;
+  metadata: {
+    methodology: 'Traditional Vedic (Natal → Dasha → Transit)';
+    queryType: string;
+    timestamp: string;
+    sadeSatiActive: boolean;
+    sadeSatiPhase: string;
+    verdict: 'Favourable' | 'Mixed' | 'Delayed' | 'Difficult';
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOMAIN HOUSE & KARAKA MAPPINGS
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface DomainRule {
+  domain: string;
+  relevantHouses: number[];
+  relevantKarakas: string[];
+}
+
+const DOMAIN_RULES: Record<string, DomainRule> = {
+  MARRIAGE: {
+    domain: 'Marriage / Relationship',
+    relevantHouses: [7, 2, 11],
+    relevantKarakas: ['Venus', 'Jupiter', 'Moon']
+  },
+  CAREER: {
+    domain: 'Career / Profession',
+    relevantHouses: [10, 6, 2, 11],
+    relevantKarakas: ['Sun', 'Saturn', 'Mercury', 'Jupiter']
+  },
+  PROGENY: {
+    domain: 'Progeny / Children',
+    relevantHouses: [5, 9, 1, 2],
+    relevantKarakas: ['Jupiter', 'Moon', 'Venus']
+  },
+  HEALTH: {
+    domain: 'Health / Vitality',
+    relevantHouses: [1, 6, 8, 12],
+    relevantKarakas: ['Sun', 'Moon', 'Mars', 'Saturn']
+  },
+  FINANCE: {
+    domain: 'Finance / Wealth',
+    relevantHouses: [2, 11, 9, 5],
+    relevantKarakas: ['Jupiter', 'Mercury', 'Venus']
+  },
+  EDUCATION: {
+    domain: 'Education / Academics',
+    relevantHouses: [4, 5, 9],
+    relevantKarakas: ['Mercury', 'Jupiter']
+  },
+  PROPERTY: {
+    domain: 'Property / Real Estate / Vehicles',
+    relevantHouses: [4, 11, 2],
+    relevantKarakas: ['Mars', 'Moon', 'Saturn', 'Venus']
+  },
+  LITIGATION: {
+    domain: 'Litigation / Legal Disputes',
+    relevantHouses: [6, 8, 12],
+    relevantKarakas: ['Mars', 'Saturn', 'Rahu']
+  },
+  FOREIGN_TRAVEL: {
+    domain: 'Foreign Travel / Relocation',
+    relevantHouses: [12, 9, 3],
+    relevantKarakas: ['Rahu', 'Jupiter', 'Saturn', 'Moon']
+  },
+  SPIRITUALITY: {
+    domain: 'Spirituality / Dharma',
+    relevantHouses: [9, 12, 1, 5],
+    relevantKarakas: ['Jupiter', 'Ketu', 'Saturn']
+  },
+  GENERAL: {
+    domain: 'Life Overview / General',
+    relevantHouses: [1, 5, 9, 10],
+    relevantKarakas: ['Sun', 'Moon', 'Jupiter']
+  }
+};
 
 export class EnhancedGeminiConsultationService {
   private queryEngine: EnhancedQueryConsultationEngine;
@@ -104,61 +304,594 @@ export class EnhancedGeminiConsultationService {
     this.queryEngine = new EnhancedQueryConsultationEngine();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // PART 4: REFACTORED TRADITIONAL VEDIC METHODS (Natal → Dasha → Transit)
+  // ─────────────────────────────────────────────────────────────────────────
+
   /**
-   * Computes deterministic Unified KP Chart Ground Truths for the user query.
-   * Single source of truth across all consultation personas.
+   * Stage 1: Natal Analysis (From Ascendant / Lagna)
+   */
+  public performNatalAnalysis(
+    horoscopeData: any,
+    birthDetails: BirthDetails,
+    relevantHouses: number[],
+    relevantKarakas: string[]
+  ): NatalAnalysisResult {
+    const ascSign = extractAscendantSign(horoscopeData);
+    const ascLon = extractAscendantLongitude(horoscopeData);
+    const lagnaSign = ascSign;
+    const lagnaLord = SIGN_LORDS[lagnaSign] || 'Saturn';
+    const lagnaSignIdx = ZODIAC_SIGNS.indexOf(lagnaSign as any) !== -1 ? ZODIAC_SIGNS.indexOf(lagnaSign as any) : 10;
+
+    const planetsList = extractPlanetsList(horoscopeData);
+
+    // 1. House lords and placements
+    const houseLords = relevantHouses.map(houseNum => {
+      const sign = ZODIAC_SIGNS[(lagnaSignIdx + houseNum - 1) % 12];
+      const lord = getHouseLord(houseNum, sign);
+      const lordPlanet = planetsList.find(p => p.name.toLowerCase() === lord.toLowerCase());
+      const lordHousePosition = lordPlanet ? lordPlanet.house : getHouseFromAscendant(lordPlanet?.longitude || 0, ascLon);
+      const strength = getPlanetStrength(lord, lordPlanet?.sign || sign);
+
+      return {
+        house: houseNum,
+        lord,
+        sign,
+        housePosition: lordHousePosition,
+        strength
+      };
+    });
+
+    // 2. House occupancy
+    const houseOccupancy = relevantHouses.map(houseNum => ({
+      house: houseNum,
+      occupants: getHouseOccupancy(horoscopeData, houseNum, true)
+    }));
+
+    // 3. Karaka analysis
+    const karakaAnalysis = relevantKarakas.map(karaka => {
+      const kPlanet = planetsList.find(p => p.name.toLowerCase() === karaka.toLowerCase());
+      const sign = kPlanet?.sign || 'Aries';
+      const house = kPlanet ? kPlanet.house : getHouseFromAscendant(kPlanet?.longitude || 0, ascLon);
+      const strength = getPlanetStrength(karaka, sign);
+
+      return {
+        karaka,
+        sign,
+        house,
+        strength
+      };
+    });
+
+    // 4. Evaluate Trika afflictions (6, 8, 12 placements) and Benefic strengths
+    const trikaAfflictedLords = houseLords.filter(h => [6, 8, 12].includes(h.housePosition));
+    const debilitatedLords = houseLords.filter(h => h.strength.dignity === 'Debilitated');
+    const exaltedOrOwnLords = houseLords.filter(h => ['Exalted', 'Own Sign'].includes(h.strength.dignity));
+
+    let verdict: 'strong' | 'moderate' | 'delayed' | 'obstructed' = 'moderate';
+    let conclusion = '';
+
+    if (exaltedOrOwnLords.length >= 1 && trikaAfflictedLords.length === 0) {
+      verdict = 'strong';
+      conclusion = `Strong natal promise: Primary house lord (${houseLords[0]?.lord}) is well-placed in House ${houseLords[0]?.housePosition} (${houseLords[0]?.strength.dignity}), free from Trika afflictions.`;
+    } else if (trikaAfflictedLords.length > 0) {
+      verdict = 'delayed';
+      conclusion = `Natal setup indicates delay or transformation: House ${trikaAfflictedLords[0].house} lord (${trikaAfflictedLords[0].lord}) sits in Trika House ${trikaAfflictedLords[0].housePosition}. Classical Parashari indicates initial obstacles requiring perseverance before fruition.`;
+    } else if (debilitatedLords.length > 0) {
+      verdict = 'obstructed';
+      conclusion = `Afflicted natal indications: Key significator ${debilitatedLords[0].lord} is in debilitation (${debilitatedLords[0].sign}). Requires remedial support and sustained effort.`;
+    } else {
+      verdict = 'moderate';
+      conclusion = `Balanced natal promise: Relevant houses (${relevantHouses.join(', ')}) possess steady planetary placements under Lagna lord ${lagnaLord}.`;
+    }
+
+    return {
+      lagnaSign,
+      lagnaLord,
+      relevantHouses,
+      relevantKarakas,
+      houseOccupancy,
+      houseLords,
+      karakaAnalysis,
+      conclusion,
+      verdict
+    };
+  }
+
+  /**
+   * Stage 2: Dasha Analysis (Vimshottari MD, AD, PD from Lagna)
+   */
+  public performDashaAnalysis(
+    horoscopeData: any,
+    birthDetails: BirthDetails,
+    currentDateTime: Date = new Date(),
+    natalAnalysis?: NatalAnalysisResult
+  ): DashaAnalysisResult {
+    const ascLon = extractAscendantLongitude(horoscopeData);
+    const planetsList = extractPlanetsList(horoscopeData);
+
+    let mdLord = 'Mercury';
+    let adLord = 'Venus';
+    let pdLord = 'Venus';
+    let mdStartDate: Date | undefined;
+    let mdEndDate: Date | undefined;
+    let adStartDate: Date | undefined;
+    let adEndDate: Date | undefined;
+
+    try {
+      const activeDasha = calculateActiveDasha(horoscopeData, birthDetails.date, currentDateTime);
+      if (activeDasha) {
+        mdLord = activeDasha.mahadasha?.lord || mdLord;
+        adLord = activeDasha.antardasha?.lord || adLord;
+        pdLord = activeDasha.pratyantardasha?.lord || adLord;
+        mdStartDate = activeDasha.mahadasha?.startDate ? new Date(activeDasha.mahadasha.startDate) : undefined;
+        mdEndDate = activeDasha.mahadasha?.endDate ? new Date(activeDasha.mahadasha.endDate) : undefined;
+        adStartDate = activeDasha.antardasha?.startDate ? new Date(activeDasha.antardasha.startDate) : undefined;
+        adEndDate = activeDasha.antardasha?.endDate ? new Date(activeDasha.antardasha.endDate) : undefined;
+      }
+    } catch (e) {}
+
+    const mdPlanet = planetsList.find(p => p.name.toLowerCase() === mdLord.toLowerCase());
+    const adPlanet = planetsList.find(p => p.name.toLowerCase() === adLord.toLowerCase());
+    const pdPlanet = planetsList.find(p => p.name.toLowerCase() === pdLord.toLowerCase());
+
+    const mdHouse = mdPlanet ? mdPlanet.house : (mdPlanet ? getHouseFromAscendant(mdPlanet.longitude, ascLon) : 1);
+    const adHouse = adPlanet ? adPlanet.house : (adPlanet ? getHouseFromAscendant(adPlanet.longitude, ascLon) : 1);
+    const pdHouse = pdPlanet ? pdPlanet.house : (pdPlanet ? getHouseFromAscendant(pdPlanet.longitude, ascLon) : 1);
+
+    const mdSign = mdPlanet?.sign || 'Aries';
+    const adSign = adPlanet?.sign || 'Aries';
+    const pdSign = pdPlanet?.sign || 'Aries';
+
+    const mdStrength = getPlanetStrength(mdLord, mdSign);
+    const adStrength = getPlanetStrength(adLord, adSign);
+    const pdStrength = getPlanetStrength(pdLord, pdSign);
+
+    // Dasha relationships
+    const dashaRelationships: Array<{ pair: string; type: string; description: string }> = [];
+
+    const mdAdRel = getDashaRelationshipDescription(mdLord, adLord, mdHouse, adHouse);
+    if (mdAdRel.type !== 'Neutral') {
+      dashaRelationships.push({ pair: `${mdLord}-${adLord}`, ...mdAdRel });
+    }
+
+    const adPdRel = getDashaRelationshipDescription(adLord, pdLord, adHouse, pdHouse);
+    if (adPdRel.type !== 'Neutral') {
+      dashaRelationships.push({ pair: `${adLord}-${pdLord}`, ...adPdRel });
+    }
+
+    const doubleTrika = [6, 8, 12].includes(mdHouse) && [6, 8, 12].includes(adHouse);
+
+    // Relate to relevant houses if available
+    const relevantHouses = natalAnalysis?.relevantHouses || [1, 7, 10];
+    const mdConnects = relevantHouses.includes(mdHouse);
+    const adConnects = relevantHouses.includes(adHouse);
+
+    let verdict: 'supportive' | 'neutral' | 'challenging' | 'critical' = 'neutral';
+    let conclusion = '';
+
+    if (doubleTrika) {
+      verdict = 'critical';
+      conclusion = `Intense testing phase: Both Mahadasha lord (${mdLord}) and Antardasha lord (${adLord}) activate Trika houses (${mdHouse} and ${adHouse}) simultaneously. Demands caution, patience, and non-impulsive decisions.`;
+    } else if (isShashtashtaka(mdHouse, adHouse)) {
+      verdict = 'challenging';
+      conclusion = `Friction & transformation: Mahadasha lord (${mdLord}) in House ${mdHouse} and Antardasha lord (${adLord}) in House ${adHouse} form a Shashtashtaka (6-8) relationship, creating conflicting dynamics or testing resolve.`;
+    } else if (isDwidwadasha(mdHouse, adHouse)) {
+      verdict = 'challenging';
+      conclusion = `Distance & expenditure: ${mdLord} and ${adLord} sit in a 2-12 (Dwidwadasha) alignment, indicating adjustments, foreign distance, or high expenditure before gains.`;
+    } else if (mdConnects || adConnects || ['Exalted', 'Own Sign'].includes(adStrength.dignity)) {
+      verdict = 'supportive';
+      conclusion = `Supportive timing: Antardasha lord ${adLord} is strong in House ${adHouse} (${adStrength.dignity}) and directly activates the domain of interest.`;
+    } else {
+      verdict = 'neutral';
+      conclusion = `Steady progress: Running ${mdLord} Mahadasha and ${adLord} Antardasha providing moderate, consistent momentum.`;
+    }
+
+    return {
+      md: {
+        lord: mdLord,
+        house: mdHouse,
+        sign: mdSign,
+        strength: mdStrength,
+        startDate: mdStartDate,
+        endDate: mdEndDate
+      },
+      ad: {
+        lord: adLord,
+        house: adHouse,
+        sign: adSign,
+        strength: adStrength,
+        startDate: adStartDate,
+        endDate: adEndDate
+      },
+      pd: {
+        lord: pdLord,
+        house: pdHouse,
+        sign: pdSign,
+        strength: pdStrength
+      },
+      natalPositions: [
+        { role: 'MD', lord: mdLord, house: mdHouse },
+        { role: 'AD', lord: adLord, house: adHouse },
+        { role: 'PD', lord: pdLord, house: pdHouse }
+      ],
+      dashaRelationships,
+      doubleTrika,
+      conclusion,
+      verdict
+    };
+  }
+
+  /**
+   * Stage 3: Transit Analysis (From Natal Moon Sign + Sade Sati)
+   */
+  public performTransitAnalysis(
+    horoscopeData: any,
+    birthDetails: BirthDetails,
+    currentDateTime: Date = new Date(),
+    natalAnalysis?: NatalAnalysisResult,
+    dashaAnalysis?: DashaAnalysisResult
+  ): TransitAnalysisResult {
+    const moonLon = extractMoonLongitude(horoscopeData);
+    const moonSignIdx = Math.floor((((moonLon % 360) + 360) % 360) / 30);
+    const moonSign = horoscopeData?.rasi || horoscopeData?.planets?.find((p: any) => p.name === 'Moon')?.sign || ZODIAC_SIGNS[moonSignIdx] || 'Aries';
+
+    // Current real sidereal transits
+    let transitSaturnLon = 345; // Default Pisces
+    let transitSaturnSign = 'Pisces';
+    let transitJupiterLon = 75; // Default Gemini / Cancer
+    let transitJupiterSign = 'Gemini';
+    let allPlanetaryTransits: Array<{
+      planet: string;
+      sign: string;
+      houseFromMoon: number;
+      degreeInSign?: number;
+      isRetrograde?: boolean;
+      classification?: string;
+      classicalResultTelugu?: string;
+    }> = [];
+
+    try {
+      const liveTransits = computeLiveTransitSnapshot(moonSign, currentDateTime);
+      if (liveTransits?.positions) {
+        if (liveTransits.positions.Saturn?.siderealLongitude !== undefined) {
+          transitSaturnLon = liveTransits.positions.Saturn.siderealLongitude;
+          transitSaturnSign = liveTransits.positions.Saturn.sign || 'Pisces';
+        }
+        if (liveTransits.positions.Jupiter?.siderealLongitude !== undefined) {
+          transitJupiterLon = liveTransits.positions.Jupiter.siderealLongitude;
+          transitJupiterSign = liveTransits.positions.Jupiter.sign || 'Gemini';
+        }
+
+        allPlanetaryTransits = (Object.keys(liveTransits.positions) as Array<keyof typeof liveTransits.positions>).map(key => {
+          const pos = liveTransits.positions[key];
+          return {
+            planet: pos.planet,
+            sign: pos.sign,
+            houseFromMoon: pos.houseFromMoon,
+            degreeInSign: pos.degreeInSign,
+            isRetrograde: !!pos.isRetrograde,
+            classification: pos.classification,
+            classicalResultTelugu: pos.classicalResultTelugu
+          };
+        });
+      }
+    } catch (e) {}
+
+    const sadeSati = getSadeSatiStatus(transitSaturnLon, moonLon);
+    const jupiterHouseFromMoon = getHouseFromMoon(transitJupiterLon, moonLon);
+    const saturnHouseFromMoon = getHouseFromMoon(transitSaturnLon, moonLon);
+
+    // Check transits of dasha lords
+    const dashaLords = [dashaAnalysis?.md.lord || 'Mercury', dashaAnalysis?.ad.lord || 'Venus'];
+    const planetsList = extractPlanetsList(horoscopeData);
+
+    const dashaLordPositions = dashaLords.map(lord => {
+      const p = planetsList.find(item => item.name.toLowerCase() === lord.toLowerCase());
+      const pLon = p?.longitude || 0;
+      const houseFromMoon = getHouseFromMoon(pLon, moonLon);
+      const sign = p?.sign || 'Aries';
+      return {
+        lord,
+        transitSign: sign,
+        houseFromMoon,
+        description: `${lord} sits in House ${houseFromMoon} relative to Natal Moon (${moonSign})`
+      };
+    });
+
+    // Check relevant karakas
+    const relevantKarakas = natalAnalysis?.relevantKarakas || ['Jupiter', 'Venus'];
+    const karakaTransit = relevantKarakas.map(karaka => {
+      const p = planetsList.find(item => item.name.toLowerCase() === karaka.toLowerCase());
+      const pLon = p?.longitude || 0;
+      const houseFromMoon = getHouseFromMoon(pLon, moonLon);
+      const sign = p?.sign || 'Aries';
+      return {
+        karaka,
+        transitSign: sign,
+        houseFromMoon,
+        description: `Karaka ${karaka} in House ${houseFromMoon} from Moon`
+      };
+    });
+
+    // Transit Jupiter aspects 5th, 7th, 9th from its position
+    const jupiterAspects = [5, 7, 9].map(h => ((jupiterHouseFromMoon + h - 2) % 12) + 1);
+    const jupiterAspectsRelevant = jupiterAspects.some(h => natalAnalysis?.relevantHouses?.includes(h));
+
+    // Transit Saturn aspects 3rd, 7th, 10th from its position
+    const saturnAspects = [3, 7, 10].map(h => ((saturnHouseFromMoon + h - 2) % 12) + 1);
+    const saturnAspectsRelevant = saturnAspects.some(h => natalAnalysis?.relevantHouses?.includes(h));
+
+    let verdict: 'confirming' | 'neutral' | 'contradicting' = 'confirming';
+    let conclusion = '';
+
+    if (sadeSati.active && sadeSati.saturnHouseFromMoon === 1) {
+      verdict = 'contradicting';
+      conclusion = `Intense Gochara pressure: ${sadeSati.description} Demands deliberate discipline and emotional equilibrium.`;
+    } else if (jupiterAspectsRelevant || [1, 2, 5, 7, 9, 11].includes(jupiterHouseFromMoon)) {
+      verdict = 'confirming';
+      conclusion = `Auspicious transit support: Transiting Jupiter in ${transitJupiterSign} (House ${jupiterHouseFromMoon} from Moon) casts protective benevolent aspects.`;
+    } else if (sadeSati.active) {
+      verdict = 'neutral';
+      conclusion = `Moderate transit influence: ${sadeSati.phase} active, bringing lessons in diligence, balanced by natal dasha momentum.`;
+    } else {
+      verdict = 'confirming';
+      conclusion = `Favourable transit conditions: Free from Sade Sati intensity; benefic planetary transits align smoothly with natal factors.`;
+    }
+
+    return {
+      moonSign,
+      moonLongitude: moonLon,
+      allPlanetaryTransits,
+      dashaLordPositions,
+      karakaTransit,
+      sadeSati,
+      transitJupiter: {
+        sign: transitJupiterSign,
+        houseFromMoon: jupiterHouseFromMoon,
+        aspectsRelevant: jupiterAspectsRelevant
+      },
+      transitSaturn: {
+        sign: transitSaturnSign,
+        houseFromMoon: saturnHouseFromMoon,
+        aspectsRelevant: saturnAspectsRelevant
+      },
+      conclusion,
+      verdict
+    };
+  }
+
+  /**
+   * Stage 4: Final Verdict (Synthesizes Natal, Dasha, and Transit stages)
+   */
+  public generateFinalVerdict(
+    userQuery: string,
+    natalAnalysis: NatalAnalysisResult,
+    dashaAnalysis: DashaAnalysisResult,
+    transitAnalysis: TransitAnalysisResult
+  ): FinalVerdictResult {
+    let verdict: 'Favourable' | 'Mixed' | 'Delayed' | 'Difficult' = 'Mixed';
+
+    if (natalAnalysis.verdict === 'strong' && dashaAnalysis.verdict === 'supportive' && transitAnalysis.verdict === 'confirming') {
+      verdict = 'Favourable';
+    } else if (dashaAnalysis.doubleTrika || natalAnalysis.verdict === 'obstructed') {
+      verdict = 'Difficult';
+    } else if (natalAnalysis.verdict === 'delayed' || dashaAnalysis.verdict === 'challenging' || transitAnalysis.sadeSati.active) {
+      verdict = 'Delayed';
+    } else {
+      verdict = 'Mixed';
+    }
+
+    // Specific timeline calculation
+    let timeline = 'Next 12–24 months';
+    if (dashaAnalysis.ad.endDate) {
+      const endYear = new Date(dashaAnalysis.ad.endDate).getFullYear();
+      if (verdict === 'Favourable') {
+        timeline = `Immediate supportive window active through ${new Date(dashaAnalysis.ad.endDate).toLocaleDateString()}`;
+      } else if (verdict === 'Delayed') {
+        timeline = `Favourable opening begins from ${endYear}–${endYear + 1} following the current ${dashaAnalysis.ad.lord} Antardasha transition`;
+      } else if (verdict === 'Difficult') {
+        timeline = `Transformation phase through late ${endYear}; clarity emerges in subsequent sub-period`;
+      } else {
+        timeline = `Gradual realization across ${new Date().getFullYear()}–${endYear}`;
+      }
+    }
+
+    const summary = `Based on the classical three-layer synthesis (Natal Promise: ${natalAnalysis.verdict}, Dasha Activation: ${dashaAnalysis.verdict}, Transit Condition: ${transitAnalysis.verdict}), the indication is ${verdict.toUpperCase()}. ${natalAnalysis.conclusion} ${dashaAnalysis.conclusion}`;
+    const support = natalAnalysis.conclusion;
+    const activation = dashaAnalysis.conclusion;
+    const currentCondition = transitAnalysis.conclusion;
+
+    const actionRecommendations = [
+      `Strengthen benefic significator ${natalAnalysis.relevantKarakas[0] || 'Jupiter'} through traditional Upasanas and charity.`,
+      `Practice patience during the active ${dashaAnalysis.md.lord}-${dashaAnalysis.ad.lord} sub-period; avoid hasty decisions.`,
+      transitAnalysis.sadeSati.active
+        ? `Perform light Saturday oil lamp offerings or Hanuman Chalisa recitation to ease ${transitAnalysis.sadeSati.phase} discipline.`
+        : `Take proactive, well-planned steps aligned with the active dasha timing.`
+    ];
+
+    const validationQuestions = [
+      `During earlier sub-periods of ${dashaAnalysis.ad.lord} or ${dashaAnalysis.md.lord}, did you experience a significant life transition or relocation?`,
+      `Did major milestones or family developments occur when Jupiter was last in harmonious aspect to your Natal Moon (${transitAnalysis.moonSign})?`
+    ];
+
+    return {
+      summary,
+      support,
+      activation,
+      currentCondition,
+      verdict,
+      timeline,
+      actionRecommendations,
+      validationQuestions
+    };
+  }
+
+  /**
+   * Complete 4-stage query analysis pipeline.
+   */
+  public analyzeQuery(
+    userQuery: string,
+    birthDetails: BirthDetails,
+    horoscopeData?: any,
+    currentDateTime: Date = new Date()
+  ): ComprehensiveVedicAnalysis {
+    const qLower = (userQuery || '').toLowerCase();
+
+    // Identify domain
+    let matchedDomain = 'GENERAL';
+    if (qLower.includes('marri') || qLower.includes('spouse') || qLower.includes('wife') || qLower.includes('husband') || qLower.includes('partner') || qLower.includes('love') || qLower.includes('vivah') || qLower.includes('పెళ్లి') || qLower.includes('వివాహం')) {
+      matchedDomain = 'MARRIAGE';
+    } else if (qLower.includes('job') || qLower.includes('career') || qLower.includes('work') || qLower.includes('business') || qLower.includes('promotion') || qLower.includes('profession') || qLower.includes('ఉద్యోగం') || qLower.includes('వృత్తి')) {
+      matchedDomain = 'CAREER';
+    } else if (qLower.includes('child') || qLower.includes('progeny') || qLower.includes('baby') || qLower.includes('conceive') || qLower.includes('pregnancy') || qLower.includes('son') || qLower.includes('daughter') || qLower.includes('సంతానం') || qLower.includes('పిల్లలు')) {
+      matchedDomain = 'PROGENY';
+    } else if (qLower.includes('health') || qLower.includes('disease') || qLower.includes('surgery') || qLower.includes('sick') || qLower.includes('pain') || qLower.includes('ఆరోగ్యం') || qLower.includes('చికిత్స')) {
+      matchedDomain = 'HEALTH';
+    } else if (qLower.includes('money') || qLower.includes('wealth') || qLower.includes('finance') || qLower.includes('income') || qLower.includes('debt') || qLower.includes('profit') || qLower.includes('ధనం') || qLower.includes('ఆర్థికం')) {
+      matchedDomain = 'FINANCE';
+    } else if (qLower.includes('study') || qLower.includes('exam') || qLower.includes('college') || qLower.includes('degree') || qLower.includes('education') || qLower.includes('విద్య') || qLower.includes('చదువు')) {
+      matchedDomain = 'EDUCATION';
+    } else if (qLower.includes('house') || qLower.includes('property') || qLower.includes('land') || qLower.includes('vehicle') || qLower.includes('car') || qLower.includes('ఆస్తి') || qLower.includes('వాహనం')) {
+      matchedDomain = 'PROPERTY';
+    } else if (qLower.includes('court') || qLower.includes('case') || qLower.includes('legal') || qLower.includes('litigat') || qLower.includes('dispute') || qLower.includes('వ్యాజ్యం')) {
+      matchedDomain = 'LITIGATION';
+    } else if (qLower.includes('visa') || qLower.includes('foreign') || qLower.includes('abroad') || qLower.includes('travel') || qLower.includes('relocat') || qLower.includes('విదేశీ')) {
+      matchedDomain = 'FOREIGN_TRAVEL';
+    } else if (qLower.includes('spiritual') || qLower.includes('guru') || qLower.includes('moksha') || qLower.includes('pooja') || qLower.includes('dharma') || qLower.includes('ఆధ్యాత్మికత')) {
+      matchedDomain = 'SPIRITUALITY';
+    }
+
+    const domainRule = DOMAIN_RULES[matchedDomain] || DOMAIN_RULES.GENERAL;
+
+    // Execute 4 stages
+    const natalAnalysis = this.performNatalAnalysis(
+      horoscopeData,
+      birthDetails,
+      domainRule.relevantHouses,
+      domainRule.relevantKarakas
+    );
+
+    const dashaAnalysis = this.performDashaAnalysis(
+      horoscopeData,
+      birthDetails,
+      currentDateTime,
+      natalAnalysis
+    );
+
+    const transitAnalysis = this.performTransitAnalysis(
+      horoscopeData,
+      birthDetails,
+      currentDateTime,
+      natalAnalysis,
+      dashaAnalysis
+    );
+
+    const finalVerdict = this.generateFinalVerdict(
+      userQuery,
+      natalAnalysis,
+      dashaAnalysis,
+      transitAnalysis
+    );
+
+    const historicalEventWindows = finalVerdict.validationQuestions.map((vq, idx) => ({
+      periodLabel: idx === 0 ? `Past ${dashaAnalysis.ad.lord} sub-period` : `Jupiter Transit Cycle`,
+      validationQuestion: vq
+    }));
+
+    const futureTimingWindows = [
+      {
+        periodLabel: finalVerdict.timeline,
+        description: `Primary window: active ${dashaAnalysis.md.lord}-${dashaAnalysis.ad.lord} sub-period aligns with transit support`,
+        favorabilityScore: finalVerdict.verdict === 'Favourable' ? 9 : finalVerdict.verdict === 'Mixed' ? 7 : 5,
+        action: finalVerdict.actionRecommendations[0] || 'Active effort and remedy practice'
+      }
+    ];
+
+    return {
+      domain: domainRule.domain,
+      natalAnalysis,
+      dashaAnalysis,
+      transitAnalysis,
+      finalVerdict,
+      historicalEventWindows,
+      futureTimingWindows,
+      metadata: {
+        methodology: 'Traditional Vedic (Natal → Dasha → Transit)',
+        queryType: domainRule.domain,
+        timestamp: new Date().toISOString(),
+        sadeSatiActive: transitAnalysis.sadeSati.active,
+        sadeSatiPhase: transitAnalysis.sadeSati.phase,
+        verdict: finalVerdict.verdict
+      }
+    };
+  }
+
+  /**
+   * Refactored Vedic Ground Truths Generator:
+   * Completely free of KP Cusp Sub Lords, KP Gatekeepers, or Star Lords.
+   * Feeds pure Parashari classical truth to components expecting VedicGroundTruths.
    */
   public computeKPGroundTruths(
     userQuery: string,
     birthData: BirthDetails,
     horoscopeData?: any
   ): VedicGroundTruths {
-    const unified = computeUnifiedKPGroundTruth(userQuery, birthData, horoscopeData);
+    const analysis = this.analyzeQuery(userQuery, birthData, horoscopeData);
 
-    const targetHouse = unified.topic === 'CAREER' ? 10 : unified.topic === 'MARRIAGE' ? 7 : unified.topic === 'FINANCE' ? 2 : unified.topic === 'HEALTH' ? 1 : 1;
+    const primaryHouse = analysis.natalAnalysis.relevantHouses[0] || 1;
+    const primaryHouseLord = analysis.natalAnalysis.houseLords[0]?.lord || 'Venus';
 
     const majorHouses = [
-      { house: 1, name: "Self / Health" },
-      { house: 2, name: "Finance / Wealth" },
+      { house: 1, name: "Self / Vitality" },
+      { house: 2, name: "Finance / Family" },
       { house: 4, name: "Home / Property" },
-      { house: 5, name: "Children / Creativity" },
-      { house: 6, name: "Service / Vitality" },
+      { house: 5, name: "Children / Intellect" },
+      { house: 6, name: "Competition / Service" },
       { house: 7, name: "Marriage / Union" },
-      { house: 9, name: "Fortune / Higher Ed" },
+      { house: 9, name: "Fortune / Dharma" },
       { house: 10, name: "Career / Status" },
-      { house: 11, name: "Gains / Fulfill" },
+      { house: 11, name: "Gains / Fulfillment" },
       { house: 12, name: "Moksha / Foreign" }
     ];
 
-    const majorHouseAlignment = majorHouses.map(h => ({
-      house: h.house,
-      name: h.name,
-      houseLord: unified.cuspSubLord,
-      promise: unified.promise,
-      status: (unified.promise === 'NO' ? 'RESTRICTED' : 'OPEN') as 'OPEN' | 'RESTRICTED'
-    }));
+    const majorHouseAlignment = majorHouses.map(h => {
+      const hLord = analysis.natalAnalysis.houseLords.find(item => item.house === h.house)?.lord || primaryHouseLord;
+      const isOpen = analysis.finalVerdict.verdict !== 'Difficult';
+      return {
+        house: h.house,
+        name: h.name,
+        houseLord: hLord,
+        promise: (analysis.finalVerdict.verdict === 'Favourable' ? 'YES' : analysis.finalVerdict.verdict === 'Delayed' ? 'DELAYED' : 'NO') as 'YES' | 'DELAYED' | 'NO',
+        status: (isOpen ? 'OPEN' : 'RESTRICTED') as 'OPEN' | 'RESTRICTED'
+      };
+    });
+
+    const vedicPromise: 'YES' | 'DELAYED' | 'NO' =
+      analysis.finalVerdict.verdict === 'Favourable' ? 'YES' :
+      analysis.finalVerdict.verdict === 'Delayed' ? 'DELAYED' : 'NO';
 
     return {
-      domain: unified.houseDomain,
-      targetHouse,
-      targetHouseLord: unified.cuspSubLord,
-      rasiSign: 'Natal Rasi',
-      navamshaSign: 'Navamsha Alignment',
-      divisionalFocus: 'KP Stellar & Divisional Alignment',
-      vedicPromise: unified.promise,
-      gatekeeperStatus: unified.promise === 'NO' ? 'RESTRICTED' : 'OPEN',
-      confidenceScore: unified.confidenceScore,
-      timing: unified.timing,
-      explanation: `KP Cusp Sub-Lord (${unified.cuspSubLord}) signifies houses [${unified.cuspSubLordHouses.join(', ')}]. KP Verdict: ${unified.promise}. Active Dasha: ${unified.activeVimshottariDesc}.`,
-      obstacles: unified.promise === 'NO' ? ['Cusp sub-lord signifies unfavorable houses'] : unified.promise === 'DELAYED' ? ['Obstacles or delays indicated by sub-lord significations'] : [],
-      activeDasha: unified.activeVimshottariDesc,
-      moonSign: horoscopeData?.horoscope?.planets?.Moon?.sign || 'Aries',
-      transitsSummary: `Moon Transit Modulation: ${unified.transitModulation}`,
-      activeYogas: ['KP Cusp Sub Lord Rule', 'Vimshottari Dasha Alignment'],
+      domain: analysis.metadata.queryType,
+      targetHouse: primaryHouse,
+      targetHouseLord: primaryHouseLord,
+      rasiSign: analysis.natalAnalysis.lagnaSign,
+      navamshaSign: horoscopeData?.navamsa || 'Navamsha Alignment',
+      divisionalFocus: 'Parashari D-1 Natal & Vimshottari Dasha',
+      vedicPromise,
+      gatekeeperStatus: vedicPromise === 'NO' ? 'RESTRICTED' : 'OPEN',
+      confidenceScore: analysis.finalVerdict.verdict === 'Favourable' ? 90 : analysis.finalVerdict.verdict === 'Mixed' ? 82 : 75,
+      timing: analysis.finalVerdict.timeline,
+      explanation: `${analysis.natalAnalysis.conclusion} Active Dasha: ${analysis.dashaAnalysis.md.lord}-${analysis.dashaAnalysis.ad.lord} (${analysis.dashaAnalysis.conclusion}). Transits: ${analysis.transitAnalysis.conclusion}`,
+      obstacles: analysis.dashaAnalysis.dashaRelationships.map(r => r.description),
+      activeDasha: `${analysis.dashaAnalysis.md.lord} MD / ${analysis.dashaAnalysis.ad.lord} AD`,
+      moonSign: analysis.transitAnalysis.moonSign,
+      transitsSummary: `${analysis.transitAnalysis.sadeSati.description} Transiting Jupiter in ${analysis.transitAnalysis.transitJupiter.sign}.`,
+      activeYogas: ['Parashari Natal Promise', 'Vimshottari Dasha Activation', 'Gochara Transit Alignment'],
       majorHouseAlignment,
-      cuspSubLord: unified.cuspSubLord,
-      cuspPromise: unified.promise,
-      rulingPlanets: [unified.cuspSubLord, unified.activeMahadasha, unified.activeAntardasha],
+      cuspSubLord: primaryHouseLord,
+      cuspPromise: vedicPromise,
+      rulingPlanets: [analysis.natalAnalysis.lagnaLord, analysis.dashaAnalysis.md.lord, analysis.dashaAnalysis.ad.lord],
       majorHouseGatekeepers: majorHouseAlignment.map(m => ({
         house: m.house,
         name: m.name,
@@ -166,6 +899,43 @@ export class EnhancedGeminiConsultationService {
         promise: m.promise,
         status: m.status
       }))
+    };
+  }
+
+  /**
+   * Pre-computed consultation facts without exposing raw ephemeris.
+   */
+  public computeConsultationFacts(
+    birthData: BirthDetails,
+    horoscopeData?: any
+  ): Record<string, any> {
+    const analysis = this.analyzeQuery('general overview', birthData, horoscopeData);
+
+    return {
+      nativeInfo: {
+        name: birthData.name,
+        place: birthData.place,
+        approximateTime: birthData.approximateTime
+      },
+      chartSummary: {
+        lagna: analysis.natalAnalysis.lagnaSign,
+        lagnaLord: analysis.natalAnalysis.lagnaLord,
+        moonSign: analysis.transitAnalysis.moonSign
+      },
+      dashaPhase: {
+        mahadasha: analysis.dashaAnalysis.md.lord,
+        antardasha: analysis.dashaAnalysis.ad.lord,
+        pratyantardasha: analysis.dashaAnalysis.pd?.lord
+      },
+      transits: {
+        sadeSatiActive: analysis.transitAnalysis.sadeSati.active,
+        sadeSatiPhase: analysis.transitAnalysis.sadeSati.phase,
+        saturnHouseFromMoon: analysis.transitAnalysis.sadeSati.saturnHouseFromMoon
+      },
+      doshas: {
+        manglik: calculateManglikDosha(horoscopeData)
+      },
+      methodology: 'Natal → Dasha → Transit'
     };
   }
 
@@ -198,6 +968,12 @@ export class EnhancedGeminiConsultationService {
       const queryIntent = this.queryEngine.recognizeIntent(request.userQuery);
       const domainClassification = this.queryEngine.classifyDomain(queryIntent);
 
+      const traditionalAnalysis = this.analyzeQuery(
+        request.userQuery,
+        request.birthData,
+        request.horoscopeData
+      );
+
       const vedicGroundTruths = this.computeKPGroundTruths(
         request.userQuery,
         request.birthData,
@@ -213,13 +989,16 @@ export class EnhancedGeminiConsultationService {
         throw new ConsultationError("Data safety validation failed: raw ephemeris data detected");
       }
 
-      const persona = request.persona || "classical_parashari";
+      const persona = request.persona || "classical_jyotish";
       const systemPrompt = this.buildSystemPrompt(
         domainClassification,
         queryIntent,
         vedicGroundTruths,
         persona,
-        request.language || "en"
+        request.language || "te",
+        request.birthData,
+        request.horoscopeData,
+        traditionalAnalysis
       );
 
       const userMessage = this.buildUserMessage(
@@ -234,7 +1013,7 @@ export class EnhancedGeminiConsultationService {
         userMessage,
         request.conversationHistory,
         persona,
-        request.language || "en"
+        request.language || "te"
       );
 
       return {
@@ -246,6 +1025,7 @@ export class EnhancedGeminiConsultationService {
           confidence: queryIntent.confidence,
           vedicGroundTruths,
           kpGroundTruths: vedicGroundTruths,
+          traditionalAnalysis,
           persona
         }
       };
@@ -253,10 +1033,15 @@ export class EnhancedGeminiConsultationService {
       console.warn("Enhanced consultation warning (using deterministic fallback):", error);
       return {
         role: "assistant",
-        content: this.generateFallbackConsultationResponse(request.userQuery, request.birthData, request.horoscopeData, request.language),
+        content: this.generateFallbackConsultationResponse(
+          request.userQuery,
+          request.birthData,
+          request.horoscopeData,
+          request.language || "te"
+        ),
         timestamp: new Date(),
         metadata: {
-          persona: request.persona || "classical_parashari"
+          persona: request.persona || "classical_jyotish"
         }
       };
     }
@@ -272,6 +1057,12 @@ export class EnhancedGeminiConsultationService {
     const queryIntent = this.queryEngine.recognizeIntent(request.userQuery);
     const domainClassification = this.queryEngine.classifyDomain(queryIntent);
 
+    const traditionalAnalysis = this.analyzeQuery(
+      request.userQuery,
+      request.birthData,
+      request.horoscopeData
+    );
+
     const vedicGroundTruths = this.computeKPGroundTruths(
       request.userQuery,
       request.birthData,
@@ -283,13 +1074,16 @@ export class EnhancedGeminiConsultationService {
       request.horoscopeData
     );
 
-    const persona = request.persona || "classical_parashari";
+    const persona = request.persona || "classical_jyotish";
     const systemPrompt = this.buildSystemPrompt(
       domainClassification,
       queryIntent,
       vedicGroundTruths,
       persona,
-      request.language || "en"
+      request.language || "te",
+      request.birthData,
+      request.horoscopeData,
+      traditionalAnalysis
     );
 
     const userMessage = this.buildUserMessage(
@@ -299,149 +1093,55 @@ export class EnhancedGeminiConsultationService {
       request.conversationHistory
     );
 
-    let accumulatedText = "";
+    const responseText = await this.callGeminiWithRetry(
+      systemPrompt,
+      userMessage,
+      request.conversationHistory,
+      persona,
+      request.language || "te"
+    );
 
-    try {
-      const res = await fetch("/api/advanced-ai/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: `${systemPrompt}\n\n${userMessage}`,
-          systemInstructionOverride: systemPrompt,
-          userQuery: request.userQuery,
-          conversationHistory: request.conversationHistory,
-          persona,
-          language: request.language || "en"
-        })
-      });
-
-      if (res.ok && res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const dataStr = line.slice(6).trim();
-              if (!dataStr) continue;
-              try {
-                const parsed = JSON.parse(dataStr);
-                if (parsed.text) {
-                  accumulatedText += parsed.text;
-                  onChunk(accumulatedText);
-                }
-                if (parsed.done) break;
-              } catch (e) {
-                // ignore SSE parse errors
-              }
-            }
-          }
-        }
-      }
-
-      if (accumulatedText.trim()) {
-        return {
-          role: "assistant",
-          content: accumulatedText,
-          timestamp: new Date(),
-          metadata: {
-            queryDomain: domainClassification.domain,
-            confidence: queryIntent.confidence,
-            vedicGroundTruths,
-            kpGroundTruths: vedicGroundTruths,
-            persona
-          }
-        };
-      }
-    } catch (err) {
-      console.warn("Streaming SSE failed, falling back to non-streaming response:", err);
-    }
-
-    // Fallback if streaming failed
-    const fallbackMessage = await this.generateConsultationResponse(request);
-    onChunk(fallbackMessage.content);
-    return fallbackMessage;
-  }
-
-  /**
-   * Compute deterministic astrological facts from birth data & horoscope.
-   */
-  public computeConsultationFacts(birthData: BirthDetails, horoscopeData?: any): Record<string, any> {
-    const bDate = birthData?.date || "1996-11-01";
-    let dashaSummary = "Dasha information unavailable";
-    let mahadasha = "Unknown";
-    let antardasha = "Unknown";
-    let remainingYears = 0;
-
-    try {
-      const activeDasha = calculateActiveDasha(horoscopeData || {}, bDate);
-      mahadasha = activeDasha.mahadasha.lord;
-      antardasha = activeDasha.antardasha.lord;
-      remainingYears = Number(activeDasha.remainingBalance.toFixed(1));
-      dashaSummary = `${mahadasha} Mahadasha - ${antardasha} Antardasha (${remainingYears} years remaining)`;
-    } catch (e) {
-      // Fallback
-    }
-
-    let transitSummary: any = { saturn: "Neutral", jupiter: "Supportive" };
-    try {
-      const moonSign = horoscopeData?.horoscope?.divisional_charts?.["D-1_rasi"]?.Moon?.sign || "Moon Sign";
-      const transits = calculateTransits(moonSign);
-      transitSummary = {
-        saturn: `Saturn in ${transits.saturn.sign} (${transits.saturn.houseFromMoon}th from Moon - ${transits.saturn.classification})`,
-        jupiter: `Jupiter in ${transits.jupiter.sign} (${transits.jupiter.houseFromMoon}th from Moon - ${transits.jupiter.classification})`,
-        overallPhase: transits.summary.currentPhase
-      };
-    } catch (e) {
-      // Fallback
-    }
-
-    let doshasSummary: any = {};
-    try {
-      const manglik = calculateManglikDosha(horoscopeData || {});
-      doshasSummary = {
-        manglik: {
-          status: manglik.status,
-          severity: manglik.severity,
-          reason: manglik.reason
-        }
-      };
-    } catch (e) {
-      doshasSummary = { manglik: { status: "NEUTRAL" } };
-    }
+    onChunk(responseText);
 
     return {
-      nativeInfo: {
-        name: birthData.name || "Native",
-        gender: birthData.gender || "Not specified"
-      },
-      dashaPhase: {
-        mahadasha,
-        antardasha,
-        remainingYears,
-        summary: dashaSummary
-      },
-      transits: transitSummary,
-      doshas: doshasSummary
+      role: "assistant",
+      content: responseText,
+      timestamp: new Date(),
+      metadata: {
+        queryDomain: domainClassification.domain,
+        confidence: queryIntent.confidence,
+        vedicGroundTruths,
+        kpGroundTruths: vedicGroundTruths,
+        traditionalAnalysis,
+        persona
+      }
     };
   }
 
-  private buildSystemPrompt(
+  public buildSystemPrompt(
     domainClassification: any,
     queryIntent: any,
     vedicGroundTruths: VedicGroundTruths,
     persona: ConsultationPersona,
-    language: "en" | "hi" | "te"
+    language: "en" | "hi" | "te",
+    birthData?: BirthDetails,
+    horoscopeData?: any,
+    traditionalAnalysis?: ComprehensiveVedicAnalysis
   ): string {
-    const unified = computeUnifiedKPGroundTruth(queryIntent?.rawQuery || queryIntent?.intent || 'general query', {} as any, {});
+    if (persona === 'classical_jyotish' || persona === 'classical_parashari') {
+      return buildTraditionalAIPrompt(
+        birthData,
+        horoscopeData,
+        queryIntent?.rawQuery || '',
+        language,
+        traditionalAnalysis
+      );
+    }
+    const unified = computeUnifiedKPGroundTruth(
+      queryIntent?.rawQuery || queryIntent?.intent || 'general query',
+      birthData || ({} as any),
+      horoscopeData || {}
+    );
     return buildUnifiedSystemPrompt(persona, unified);
   }
 
@@ -449,12 +1149,17 @@ export class EnhancedGeminiConsultationService {
     userQuery: string,
     facts: Record<string, any>,
     classification: any,
-    conversationHistory: ConversationMessage[]
+    conversationHistory: ConversationMessage[],
+    language: "en" | "hi" | "te" = "te"
   ): string {
     let message = `USER QUERY: "${userQuery}"\n\n`;
     message += `PRE-COMPUTED ASTROLOGICAL FACTS:\n${JSON.stringify(facts, null, 2)}\n\n`;
     message += `DOMAIN FOCUS: ${classification.domain}\n`;
     message += `SUGGESTED ANALYSIS ANGLE: ${classification.analysisAngle}\n`;
+
+    if (language === 'te') {
+      message += `\n[MANDATORY INSTRUCTION: You MUST format the ENTIRE astrological analysis strictly in 100% fluent Telugu script (తెలుగు లిపి). Do NOT write English paragraphs.]\n`;
+    }
 
     if (conversationHistory.length > 0) {
       message += `\nCONVERSATION CONTEXT (last 4 exchanges):\n`;
@@ -523,7 +1228,7 @@ export class EnhancedGeminiConsultationService {
     return !forbiddenKeys.some(key => dataKeys.includes(key.toLowerCase()));
   }
 
-  private generateFallbackConsultationResponse(
+  public generateFallbackConsultationResponse(
     userMessage: string,
     birthData?: BirthDetails,
     horoscopeData?: any,
@@ -541,25 +1246,101 @@ export class EnhancedGeminiConsultationService {
       timezone: 5.5
     };
 
-    let canonicalChart: CanonicalChartData | undefined;
-    if (horoscopeData) {
-      try {
-        canonicalChart = ChartDataValidator.validateConsistency(horoscopeData, defaultBirthDetails);
-      } catch (e) {
-        // Fallback
-      }
+    const analysis = this.analyzeQuery(userMessage, defaultBirthDetails, horoscopeData);
+
+    const isTe = language === 'te';
+    const isHi = language === 'hi';
+
+    if (isTe) {
+      return `## ${analysis.metadata.queryType} విశ్లేషణ (Vedic Consultation)
+
+### 1. జన్మ కుండలి వాగ్దానం (Natal Analysis)
+- **లగ్నం**: ${analysis.natalAnalysis.lagnaSign} (అధిపతి: ${analysis.natalAnalysis.lagnaLord})
+- **ముఖ్య భావాలు**: ${analysis.natalAnalysis.relevantHouses.map(h => `${h}వ భావం`).join(', ')}
+- **భావ అధిపతులు**: ${analysis.natalAnalysis.houseLords.map(h => `${h.house}వ అధిపతి ${h.lord} (${h.strength.dignity})`).join('; ')}
+- **తీర్పు**: **${analysis.natalAnalysis.verdict === 'strong' ? 'అనుకూలం' : analysis.natalAnalysis.verdict === 'delayed' ? 'ఆలస్యం / రూపాంతరం' : 'మిశ్రమం'}** — ${analysis.natalAnalysis.conclusion}
+
+### 2. దశా ఫలితం (Dasha Activation)
+- **ప్రస్తుత మహాదశ**: ${analysis.dashaAnalysis.md.lord} (లగ్నం నుండి ${analysis.dashaAnalysis.md.house}వ భావంలో)
+- **ప్రస్తుత అంతర్దశ**: ${analysis.dashaAnalysis.ad.lord} (లగ్నం నుండి ${analysis.dashaAnalysis.ad.house}వ భావంలో)
+- **దశల సంబంధం**: ${analysis.dashaAnalysis.dashaRelationships.length > 0 ? analysis.dashaAnalysis.dashaRelationships[0].description : 'సమతుల్య సంబంధం'}
+- **తీర్పు**: **${analysis.dashaAnalysis.verdict === 'supportive' ? 'మద్దతుగా ఉంది' : analysis.dashaAnalysis.verdict === 'challenging' ? 'సవాలుతో కూడినది' : 'సాధారణం'}** — ${analysis.dashaAnalysis.conclusion}
+
+### 3. గోచార స్థితి (Transit Condition w.r.t Moon)
+- **చంద్ర రాశి**: ${analysis.transitAnalysis.moonSign}
+- **శని గోచారం & సాడేసతి**: ${analysis.transitAnalysis.sadeSati.description}
+- **గురు గోచారం**: ${analysis.transitAnalysis.transitJupiter.sign}లో (${analysis.transitAnalysis.transitJupiter.houseFromMoon}వ భావం). ${analysis.transitAnalysis.transitJupiter.aspectsRelevant ? 'లగ్న/భావాలపై శుభ దృష్టి ఉంది.' : ''}
+- **తీర్పు**: **${analysis.transitAnalysis.verdict === 'confirming' ? 'గోచారం అనుకూలిస్తోంది' : 'జాగ్రత్త అవసరం'}**
+
+---
+
+### తుది తీర్పు & కాల నిర్ణయం (Final Verdict)
+- **ఫలితం**: **${analysis.finalVerdict.verdict === 'Favourable' ? 'అనుకూలం (Favourable)' : analysis.finalVerdict.verdict === 'Delayed' ? 'ఆలస్యం (Delayed)' : 'మిశ్రమం (Mixed)'}**
+- **సమయం**: **${analysis.finalVerdict.timeline}**
+- **సూచన**: ${analysis.finalVerdict.summary}
+
+### నివారణోపాయాలు (Remedies)
+${analysis.finalVerdict.actionRecommendations.map(r => `- ${r}`).join('\n')}`;
     }
 
-    const groundTruth = computeUnifiedKPGroundTruth(userMessage, defaultBirthDetails, horoscopeData || {});
-    const claims = ReasoningEngine.generateAstrologicalClaims(groundTruth, userMessage, canonicalChart);
+    if (isHi) {
+      return `## ${analysis.metadata.queryType} विश्लेषण (Vedic Consultation)
 
-    return PresentationEngine.generateTeluguReport(
-      claims,
-      groundTruth,
-      userMessage,
-      canonicalChart,
-      language === "te" ? "te" : "en"
-    );
+### 1. जन्म कुंडली स्थिति (Natal Analysis)
+- **लग्न**: ${analysis.natalAnalysis.lagnaSign} (स्वामी: ${analysis.natalAnalysis.lagnaLord})
+- **प्रमुख भाव**: ${analysis.natalAnalysis.relevantHouses.map(h => `${h}वां भाव`).join(', ')}
+- **भावेश स्थिति**: ${analysis.natalAnalysis.houseLords.map(h => `${h.house}वें भाव के स्वामी ${h.lord} (${h.strength.dignity})`).join('; ')}
+- **निष्कर्ष**: **${analysis.natalAnalysis.verdict}** — ${analysis.natalAnalysis.conclusion}
+
+### 2. दशा सक्रियता (Dasha Activation)
+- **वर्तमान महादशा**: ${analysis.dashaAnalysis.md.lord} (लग्न से ${analysis.dashaAnalysis.md.house}वें भाव में)
+- **वर्तमान अंतर्दशा**: ${analysis.dashaAnalysis.ad.lord} (लग्न से ${analysis.dashaAnalysis.ad.house}वें भाव में)
+- **दशा संबंध**: ${analysis.dashaAnalysis.dashaRelationships.length > 0 ? analysis.dashaAnalysis.dashaRelationships[0].description : 'सामान्य स्थिति'}
+- **निष्कर्ष**: **${analysis.dashaAnalysis.verdict}** — ${analysis.dashaAnalysis.conclusion}
+
+### 3. गोचर स्थिति (Transit Condition w.r.t Moon)
+- **चंद्र राशि**: ${analysis.transitAnalysis.moonSign}
+- **शनि गोचर / साढ़ेसाती**: ${analysis.transitAnalysis.sadeSati.description}
+- **बृहस्पति गोचर**: ${analysis.transitAnalysis.transitJupiter.sign} (चंद्रमा से ${analysis.transitAnalysis.transitJupiter.houseFromMoon}वां भाव)
+- **निष्कर्ष**: **${analysis.transitAnalysis.verdict}**
+
+---
+
+### अंतिम निर्णय व समय (Final Verdict & Timing)
+- **आकलन**: **${analysis.finalVerdict.verdict}**
+- **समय सीमा**: **${analysis.finalVerdict.timeline}**
+- **सारांश**: ${analysis.finalVerdict.summary}
+
+### अनुशंसित उपाय (Remedies)
+${analysis.finalVerdict.actionRecommendations.map(r => `- ${r}`).join('\n')}`;
+    }
+
+    return `## ${analysis.metadata.queryType} Analysis
+
+### NATAL ANALYSIS
+- **Ascendant (Lagna)**: ${analysis.natalAnalysis.lagnaSign} (Ruled by ${analysis.natalAnalysis.lagnaLord})
+- **Relevant Houses**: Houses ${analysis.natalAnalysis.relevantHouses.join(', ')}
+- **House Lords**: ${analysis.natalAnalysis.houseLords.map(h => `House ${h.house} Lord ${h.lord} in House ${h.housePosition} (${h.strength.dignity})`).join('; ')}
+- **Conclusion**: ${analysis.natalAnalysis.conclusion} (Verdict: **${analysis.natalAnalysis.verdict.toUpperCase()}**)
+
+### DASHA ANALYSIS
+- **Current Mahadasha**: ${analysis.dashaAnalysis.md.lord} in House ${analysis.dashaAnalysis.md.house} from Ascendant
+- **Current Antardasha**: ${analysis.dashaAnalysis.ad.lord} in House ${analysis.dashaAnalysis.ad.house} from Ascendant
+- **Dasha Relationship**: ${analysis.dashaAnalysis.dashaRelationships.length > 0 ? analysis.dashaAnalysis.dashaRelationships[0].description : 'Harmonious'}
+- **Conclusion**: ${analysis.dashaAnalysis.conclusion} (Verdict: **${analysis.dashaAnalysis.verdict.toUpperCase()}**)
+
+### TRANSIT ANALYSIS
+- **Natal Moon Sign**: ${analysis.transitAnalysis.moonSign}
+- **Sade Sati**: ${analysis.transitAnalysis.sadeSati.active ? `Active (${analysis.transitAnalysis.sadeSati.phase})` : 'Inactive'} — ${analysis.transitAnalysis.sadeSati.description}
+- **Jupiter Transit**: ${analysis.transitAnalysis.transitJupiter.sign} (House ${analysis.transitAnalysis.transitJupiter.houseFromMoon} from Moon)
+- **Conclusion**: ${analysis.transitAnalysis.conclusion} (Verdict: **${analysis.transitAnalysis.verdict.toUpperCase()}**)
+
+### FINAL VERDICT
+- **Assessment**: **${analysis.finalVerdict.verdict}**
+- **Timing**: **${analysis.finalVerdict.timeline}**
+- **Direct Answer**: ${analysis.finalVerdict.summary}
+
+### Recommended Actions
+${analysis.finalVerdict.actionRecommendations.map(r => `- ${r}`).join('\n')}`;
   }
 }
-

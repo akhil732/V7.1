@@ -75,35 +75,48 @@ const apiRateLimiter = new RateLimiter(120, 10);
 const geminiCircuitBreaker = new CircuitBreaker(5, 2, 45000);
 const modelRouter = new ModelRoutingService();
 
-const PRIMARY_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+// Prioritize verified high-throughput, low-latency models in cascade.
+// Exclude unstable models prone to 503 high-demand spikes (gemini-3.8-flash, gemini-flash-latest).
+const PRIMARY_MODELS = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-3.1-flash-lite'
+];
 
+let modelRoundRobinCounter = 0;
 const quotaExhaustedModels = new Map<string, number>();
 
 function parseRetryDelayMs(errMsg: string): number {
-  if (!errMsg) return 30000;
-  // If daily / free tier quota limit reached (e.g. GenerateRequestsPerDayPerProjectPerModel-FreeTier)
-  if (
-    errMsg.includes('GenerateRequestsPerDayPerProjectPerModel') ||
-    errMsg.includes('free_tier_requests') ||
-    errMsg.includes('limit: 20') ||
-    errMsg.includes('limit: 0') ||
-    errMsg.includes('paid_tier')
-  ) {
-    return 3600000; // 1 hour cooldown for daily free-tier model quota exhaustion
-  }
-  // Look for "retry in 15.833850339s" or "retryDelay: 15s"
-  const matchSec = errMsg.match(/retry\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*s/i) || errMsg.match(/retryDelay["':\s]+(\d+(?:\.\d+)?)\s*s?/i);
+  if (!errMsg) return 20000;
+
+  // 1. Look for explicit retry delay in seconds or ms first (e.g. "Please retry in 39.245226003s" or retryDelay: "39s")
+  const matchSec = errMsg.match(/retry\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*s/i) ||
+                   errMsg.match(/retryDelay["':\s]+(\d+(?:\.\d+)?)\s*s?/i);
   if (matchSec && matchSec[1]) {
     const sec = parseFloat(matchSec[1]);
     if (!isNaN(sec) && sec > 0) {
-      return Math.min(Math.ceil(sec * 1000) + 2000, 60000); // capped at 60s
+      return Math.min(Math.ceil(sec * 1000) + 1000, 60000); // capped at 60s
     }
   }
-  // If 503 high demand spike ("Spikes in demand are usually temporary. Please try again later.")
+
+  // 2. Only if specifically daily quota limit (PerDay)
+  if (
+    errMsg.includes('PerDay') ||
+    errMsg.includes('per_day') ||
+    errMsg.includes('DailyRequests')
+  ) {
+    return 3600000; // 1 hour cooldown for daily model quota exhaustion
+  }
+
+  // 3. If 503 high demand spike ("Spikes in demand are usually temporary. Please try again later.")
   if (errMsg.includes('503') || errMsg.toLowerCase().includes('high demand') || errMsg.toLowerCase().includes('unavailable')) {
     return 15000; // 15 seconds temporary cooldown
   }
-  return 30000; // Default 30 seconds
+
+  // Default to 25s for standard free-tier RPM rate limit
+  return 25000;
 }
 
 function isModelQuotaExhausted(modelName: string): boolean {
@@ -171,21 +184,31 @@ async function generateContentWithRetryAndFallback(
   const candidateList = options.candidateModels || PRIMARY_MODELS;
   let availableModels = candidateList.filter(m => !isModelQuotaExhausted(m));
 
-  // If all candidate models are temporarily in cooldown, reset expired and guarantee at least primary
+  // If all candidate models are temporarily in cooldown, reset expired and guarantee at least earliest available
   if (availableModels.length === 0) {
     const now = Date.now();
+    let earliestModel = candidateList[0] || 'gemini-3.5-flash-lite';
+    let minUntil = Infinity;
     for (const m of candidateList) {
       const until = quotaExhaustedModels.get(m) || 0;
       if (until <= now) {
         quotaExhaustedModels.delete(m);
+        availableModels.push(m);
+      } else if (until < minUntil) {
+        minUntil = until;
+        earliestModel = m;
       }
     }
-    availableModels = candidateList.filter(m => !isModelQuotaExhausted(m));
     if (availableModels.length === 0) {
-      const first = candidateList[0] || 'gemini-3.8-flash';
-      quotaExhaustedModels.delete(first);
-      availableModels = [first];
+      quotaExhaustedModels.delete(earliestModel);
+      availableModels = [earliestModel];
     }
+  }
+
+  // Rotate available models across requests to avoid bursting a single model's free-tier rate limit
+  if (availableModels.length > 1) {
+    const offset = (modelRoundRobinCounter++) % availableModels.length;
+    availableModels = [...availableModels.slice(offset), ...availableModels.slice(0, offset)];
   }
 
   const maxRetriesPerModel = 2;
@@ -215,7 +238,8 @@ async function generateContentWithRetryAndFallback(
         if (isModelErrorOrQuota(errMsg)) {
           const delayMs = parseRetryDelayMs(errMsg);
           markModelQuotaExhausted(modelName, delayMs);
-          console.info(`[Gemini API] Model ${modelName} transiently unavailable (${errMsg.split('\n')[0]}). Cooldown ${Math.round(delayMs / 1000)}s marked, cascading to next model.`);
+          const reason = errMsg.includes('503') ? 'high demand' : errMsg.includes('429') ? 'rate limited' : 'unavailable';
+          console.log(`[Model Router] Model ${modelName} ${reason} (${Math.round(delayMs / 1000)}s cooldown), cascading to fallback.`);
           break; // Immediately cascade to next candidate model
         }
 
@@ -224,7 +248,6 @@ async function generateContentWithRetryAndFallback(
           continue;
         } else {
           markModelQuotaExhausted(modelName, 20000);
-          console.info(`[Gemini API] Model ${modelName} completed retry attempts:`, errMsg.split('\n')[0]);
           break; // proceed to next model in cascade
         }
       }
@@ -412,7 +435,7 @@ app.post('/api/advanced-ai', async (req, res) => {
     const langName = language === 'hi' ? 'Hindi' : language === 'te' ? 'Telugu' : 'English';
 
     const baseAiSys = generateSystemPrompt(language as any);
-    const systemInstruction = systemInstructionOverride || `${baseAiSys}
+    let systemInstruction = systemInstructionOverride || `${baseAiSys}
 
 CRITICAL FORMATTING & STRUCTURE REQUIREMENTS:
 1. Always start with a clear, direct executive summary statement answering the core question in bold.
@@ -421,6 +444,10 @@ CRITICAL FORMATTING & STRUCTURE REQUIREMENTS:
 4. Use numbered inline citations [1], [2], [3] in the body text wherever referencing grounded findings, classical rules, or web research.
 5. Conclude with 2-3 specific follow-up questions or planetary timing (Dasha) verification checks for the user.
 6. Write the entire response in ${langName}.`;
+
+    if (language === 'te') {
+      systemInstruction = `[STRICT HARD RULE — 100% TELUGU MANDATE]:\nమీరు మీ మొత్తం సమాధానాన్ని తప్పనిసరిగా 100% పరిపూర్ణమైన తెలుగు లిపిలోనే (Pure Telugu Script) అందించాలి. ఎట్టి పరిస్థితుల్లోనూ ఆంగ్ల వాక్యాలు లేదా వివరణలు రాయకూడదు. అన్ని హెడ్డింగులు, పాయింట్లు, విశ్లేషణలు మరియు పరిహారాలు అన్నీ సంపూర్ణంగా తెలుగులోనే ఉండాలి.\n\n` + systemInstruction;
+    }
 
     const fullPrompt = prompt || `
 ASTROLOGICAL CHART DATA:
@@ -454,12 +481,9 @@ Provide a detailed, search-grounded astrological analysis addressing the user qu
           break;
         }
       } catch (mErr: any) {
-        const mErrMsg = mErr?.message || String(mErr);
-        if (isModelErrorOrQuota(mErrMsg)) {
-          const delayMs = parseRetryDelayMs(mErrMsg);
-          markModelQuotaExhausted(modelName, delayMs);
-        }
-        // Fall back cleanly to next model or ungrounded mode
+        // If Google Search grounding is not supported or hits quota on this key,
+        // do not mark the base language model exhausted. Break immediately to standard generation.
+        break;
       }
     }
 
@@ -551,14 +575,44 @@ app.post('/api/advanced-ai/stream', async (req, res) => {
 
     const langName = language === 'hi' ? 'Hindi' : language === 'te' ? 'Telugu' : 'English';
 
-    const defaultSysInstruction = systemInstructionOverride || `You are an elite master Vedic astrologer providing multi-turn streaming consultation in ${langName}. Always adhere strictly to Vedic Parashari principles, D1 Rasi, D9 Navamsha, divisional charts, Vimshottari Dasha-Antardasha, and current transits (Gochara) w.r.t Moon. Do not use KP terminology or modern psychological framing.`;
+    let defaultSysInstruction = systemInstructionOverride || `You are an elite master Vedic astrologer providing multi-turn streaming consultation in ${langName}. Always adhere strictly to Vedic Parashari principles, D1 Rasi, D9 Navamsha, divisional charts, Vimshottari Dasha-Antardasha, and current transits (Gochara) w.r.t Moon. Do not use KP terminology or modern psychological framing.`;
+
+    if (language === 'te') {
+      defaultSysInstruction = `[STRICT HARD RULE — 100% TELUGU MANDATE]:\nమీరు మీ మొత్తం సమాధానాన్ని తప్పనిసరిగా 100% పరిపూర్ణమైన తెలుగు లిపిలోనే (Pure Telugu Script) అందించాలి. ఎట్టి పరిస్థితుల్లోనూ ఆంగ్ల వాక్యాలు లేదా వివరణలు రాయకూడదు. అన్ని హెడ్డింగులు, పాయింట్లు, విశ్లేషణలు మరియు పరిహారాలు అన్నీ సంపూర్ణంగా తెలుగులోనే ఉండాలి.\n\n` + defaultSysInstruction;
+    }
 
     const streamCandidateModels = PRIMARY_MODELS;
-    const availableStreamModels = streamCandidateModels.filter(m => !isModelQuotaExhausted(m));
-    const streamModels = availableStreamModels.length > 0 ? availableStreamModels : streamCandidateModels;
+    let availableStreamModels = streamCandidateModels.filter(m => !isModelQuotaExhausted(m));
+    if (availableStreamModels.length === 0) {
+      const now = Date.now();
+      let earliestModel = streamCandidateModels[0];
+      let minUntil = Infinity;
+      for (const m of streamCandidateModels) {
+        const until = quotaExhaustedModels.get(m) || 0;
+        if (until <= now) {
+          quotaExhaustedModels.delete(m);
+          availableStreamModels.push(m);
+        } else if (until < minUntil) {
+          minUntil = until;
+          earliestModel = m;
+        }
+      }
+      if (availableStreamModels.length === 0) {
+        quotaExhaustedModels.delete(earliestModel);
+        availableStreamModels = [earliestModel];
+      }
+    }
+
+    if (availableStreamModels.length > 1) {
+      const offset = (modelRoundRobinCounter++) % availableStreamModels.length;
+      availableStreamModels = [...availableStreamModels.slice(offset), ...availableStreamModels.slice(0, offset)];
+    }
+
+    const streamModels = availableStreamModels;
     let streamSuccess = false;
 
     for (const modelName of streamModels) {
+      let chunksWritten = 0;
       try {
         let stream: any = null;
         if (Array.isArray(conversationHistory) && conversationHistory.length > 1) {
@@ -595,6 +649,7 @@ app.post('/api/advanced-ai/stream', async (req, res) => {
         for await (const chunk of stream) {
           if (chunk.text) {
             res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+            chunksWritten++;
           }
         }
         res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
@@ -607,7 +662,15 @@ app.post('/api/advanced-ai/stream', async (req, res) => {
           const delayMs = parseRetryDelayMs(sErrMsg);
           markModelQuotaExhausted(modelName, delayMs);
         }
-        console.warn(`Streaming failed with model ${modelName}:`, sErrMsg);
+        const reason = sErrMsg.includes('503') ? 'high demand' : sErrMsg.includes('429') ? 'rate limited' : 'unavailable';
+        console.log(`[Model Router] Streaming on ${modelName} encountered ${reason}, trying next fallback.`);
+        if (chunksWritten > 0) {
+          // If chunks were already delivered to the client, terminate stream cleanly
+          res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+          res.end();
+          streamSuccess = true;
+          break;
+        }
       }
     }
 
